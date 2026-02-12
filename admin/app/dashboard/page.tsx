@@ -38,6 +38,14 @@ const priorityLabels: Record<number, string> = {
   5: 'P5 — Non urgent',
 };
 
+const priorityColors: Record<number, string> = {
+  1: 'bg-red-100 text-red-700',
+  2: 'bg-orange-100 text-orange-700',
+  3: 'bg-yellow-100 text-yellow-700',
+  4: 'bg-blue-100 text-blue-700',
+  5: 'bg-green-100 text-green-700',
+};
+
 interface Stats {
   totalUsers: number;
   totalHospitals: number;
@@ -301,13 +309,8 @@ export default function DashboardPage() {
               className="flex items-center justify-between p-3.5 bg-gray-50/50 rounded-xl border border-gray-100/50 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold ${{
-                  1: 'bg-red-100 text-red-700',
-                  2: 'bg-orange-100 text-orange-700',
-                  3: 'bg-yellow-100 text-yellow-700',
-                  4: 'bg-blue-100 text-blue-700',
-                  5: 'bg-green-100 text-green-700',
-                }[ticket.priority_level || 5] || 'bg-gray-100 text-gray-700'}`}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold ${priorityColors[ticket.priority_level || 5] || 'bg-gray-100 text-gray-700'
+                  }`}>
                   P{ticket.priority_level || '?'}
                 </div>
                 <div>
