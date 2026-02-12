@@ -25,7 +25,7 @@ const server = http.createServer(app);
 const corsOptions = {
     origin: process.env.NODE_ENV === 'production' 
         ? ['https://api.allo-urgence.tech-afm.com', 'https://admin.allo-urgence.tech-afm.com', 'https://allo-urgence.tech-afm.com']
-        : '*',
+        : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3355', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3355'],
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
     credentials: true
 };
