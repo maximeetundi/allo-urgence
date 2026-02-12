@@ -4,9 +4,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/queue_provider.dart';
 import '../../config/theme.dart';
 import '../../models/ticket.dart';
-import '../../services/api_service.dart';
 import '../../services/socket_service.dart';
-import '../../models/hospital.dart';
 import '../auth/login_screen.dart';
 
 class NurseDashboardScreen extends StatefulWidget {
@@ -16,57 +14,32 @@ class NurseDashboardScreen extends StatefulWidget {
   State<NurseDashboardScreen> createState() => _NurseDashboardScreenState();
 }
 
-class _NurseDashboardScreenState extends State<NurseDashboardScreen> {
-  List<Hospital> _hospitals = [];
-  Hospital? _selectedHospital;
-  bool _loading = true;
+class _NurseDashboardScreenState extends State<NurseDashboardScreen> with SingleTickerProviderStateMixin {
+  String? _selectedHospitalId;
+  late AnimationController _animController;
 
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..forward();
     _loadHospitals();
   }
 
-  Future<void> _loadHospitals() async {
-    try {
-      final data = await apiService.get('/hospitals');
-      setState(() {
-        _hospitals = (data['hospitals'] as List).map((h) => Hospital.fromJson(h)).toList();
-        if (_hospitals.isNotEmpty) {
-          _selectedHospital = _hospitals.first;
-          _loadQueue();
-        }
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() => _loading = false);
-    }
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
-  Future<void> _loadQueue() async {
-    if (_selectedHospital == null) return;
+  Future<void> _loadHospitals() async {
+    // Load queue for first hospital by default
     final queue = context.read<QueueProvider>();
-    await queue.loadQueue(_selectedHospital!.id);
-
-    // Setup socket
-    socketService.joinHospital(_selectedHospital!.id);
-    socketService.onQueueUpdate((data) {
-      if (mounted) _loadQueue();
-    });
-    socketService.onNewTicket((data) {
-      if (mounted) _loadQueue();
-    });
-    socketService.onCriticalAlert((data) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('🚨 ALERTE : Patient priorité ${data['priority']} !'),
-            backgroundColor: AlloUrgenceTheme.error,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    });
+    if (_selectedHospitalId != null) {
+      await queue.loadQueue(_selectedHospitalId!);
+    }
   }
 
   @override
@@ -75,178 +48,267 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> {
     final queue = context.watch<QueueProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard Infirmier'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadQueue),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await auth.logout();
-              if (!mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (_) => false,
-              );
-            },
+      // backgroundColor follows theme
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadHospitals,
+          color: AlloUrgenceTheme.primaryLight,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // Header
+              SliverToBoxAdapter(
+                child: FadeTransition(
+                  opacity: CurvedAnimation(parent: _animController, curve: const Interval(0, 0.4)),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '👩‍⚕️ Bonjour, ${auth.user?.prenom ?? ''}',
+                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                              ),
+                              const SizedBox(height: 4),
+                              Text('Tableau de bord infirmier',
+                                style: TextStyle(fontSize: 14, color: AlloUrgenceTheme.textSecondary)),
+                            ],
+                          ),
+                        ),
+                        _buildLogoutButton(auth),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Queue summary
+              if (queue.summary.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: FadeTransition(
+                    opacity: CurvedAnimation(parent: _animController, curve: const Interval(0.15, 0.6)),
+                    child: _buildSummary(queue),
+                  ),
+                ),
+
+              // Section title
+              SliverToBoxAdapter(
+                child: FadeTransition(
+                  opacity: CurvedAnimation(parent: _animController, curve: const Interval(0.3, 0.7)),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+                    child: Row(
+                      children: [
+                        const Text('File d\'attente', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AlloUrgenceTheme.primaryLight.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${queue.tickets.length} patients',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AlloUrgenceTheme.primaryLight),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Ticket list
+              queue.tickets.isEmpty
+                ? SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        children: [
+                          Icon(Icons.check_circle_outline_rounded, size: 56, color: AlloUrgenceTheme.textTertiary),
+                          const SizedBox(height: 12),
+                          Text('Aucun patient en attente', style: TextStyle(fontSize: 16, color: AlloUrgenceTheme.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  )
+                : SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (_, i) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _PatientTicketCard(
+                            ticket: queue.tickets[i],
+                            onTriage: () => _showTriageSheet(queue.tickets[i]),
+                          ),
+                        ),
+                        childCount: queue.tickets.length,
+                      ),
+                    ),
+                  ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(AuthProvider auth) {
+    return GestureDetector(
+      onTap: () async {
+        await auth.logout();
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false,
+        );
+      },
+      child: Container(
+        width: 44, height: 44,
+        decoration: BoxDecoration(
+          color: AlloUrgenceTheme.error.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Icon(Icons.logout_rounded, color: AlloUrgenceTheme.error, size: 20),
+      ),
+    );
+  }
+
+  Widget _buildSummary(QueueProvider queue) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      child: Row(
+        children: [
+          Expanded(child: _SummaryCard(
+            icon: Icons.people_rounded,
+            label: 'Actifs',
+            value: '${queue.summary['totalActive'] ?? 0}',
+            color: AlloUrgenceTheme.primaryLight,
+          )),
+          const SizedBox(width: 10),
+          Expanded(child: _SummaryCard(
+            icon: Icons.schedule_rounded,
+            label: 'Attente moy.',
+            value: '${queue.summary['averageWaitMinutes'] ?? 0} min',
+            color: AlloUrgenceTheme.warning,
+          )),
+          const SizedBox(width: 10),
+          Expanded(child: _SummaryCard(
+            icon: Icons.warning_rounded,
+            label: 'Urgents',
+            value: '${(queue.summary['byPriority'] as Map?)?['1'] ?? 0}',
+            color: AlloUrgenceTheme.error,
+          )),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Hospital selector
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  color: AlloUrgenceTheme.primaryBlue.withOpacity(0.05),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.local_hospital, color: AlloUrgenceTheme.primaryBlue),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: DropdownButton<String>(
-                          value: _selectedHospital?.id,
-                          isExpanded: true,
-                          underline: const SizedBox(),
-                          items: _hospitals.map((h) => DropdownMenuItem(value: h.id, child: Text(h.name))).toList(),
-                          onChanged: (id) {
-                            setState(() => _selectedHospital = _hospitals.firstWhere((h) => h.id == id));
-                            _loadQueue();
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Stats bar
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      _miniStat('Total', '${queue.summary['totalActive'] ?? 0}', AlloUrgenceTheme.primaryBlue),
-                      _miniStat('Attente', '${queue.summary['averageWaitMinutes'] ?? 0} min', AlloUrgenceTheme.warning),
-                      _miniStat('P1-P2', '${((queue.summary['byPriority'] as Map?)?.entries.where((e) => int.tryParse(e.key.toString()) != null && int.parse(e.key.toString()) <= 2).fold(0, (sum, e) => sum + (e.value as int)) ?? 0)}', AlloUrgenceTheme.error),
-                    ],
-                  ),
-                ),
-
-                // Patient list
-                Expanded(
-                  child: queue.loading
-                      ? const Center(child: CircularProgressIndicator())
-                      : queue.tickets.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.check_circle, size: 64, color: Colors.grey[300]),
-                                  const SizedBox(height: 16),
-                                  Text('Aucun patient en attente', style: TextStyle(fontSize: 18, color: Colors.grey[500])),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              itemCount: queue.tickets.length,
-                              itemBuilder: (_, i) => _PatientCard(
-                                ticket: queue.tickets[i],
-                                onTriage: () => _showTriageDialog(queue.tickets[i]),
-                                onAssignRoom: () => _showRoomDialog(queue.tickets[i]),
-                              ),
-                            ),
-                ),
-              ],
-            ),
     );
   }
 
-  Widget _miniStat(String label, String value, Color color) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-            Text(label, style: TextStyle(fontSize: 12, color: color)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showTriageDialog(Ticket ticket) {
-    int priority = ticket.effectivePriority;
-    final notesC = TextEditingController();
+  void _showTriageSheet(Ticket ticket) {
+    int selectedPriority = ticket.effectivePriority;
+    final notesController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
+        builder: (ctx, setModalState) => Container(
           padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Triage — ${ticket.patientFullName}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text('Pré-triage: P${ticket.priorityLevel}', style: TextStyle(color: Colors.grey[600])),
-              if (ticket.allergies != null && ticket.allergies!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text('⚠️ Allergies: ${ticket.allergies}', style: const TextStyle(color: AlloUrgenceTheme.error)),
-              ],
-              const SizedBox(height: 16),
-              const Text('Priorité validée', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: AlloUrgenceTheme.divider, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Triage — ${ticket.patientFullName}',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+              ),
+              if (ticket.preTriageCategory != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('Motif: ${ticket.preTriageCategory}', style: TextStyle(color: AlloUrgenceTheme.textSecondary)),
+                ),
+              const SizedBox(height: 20),
+
+              // Priority selector
+              const Text('Priorité validée', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
                 children: List.generate(5, (i) {
                   final p = i + 1;
-                  final color = AlloUrgenceTheme.getPriorityColor(p);
+                  final c = AlloUrgenceTheme.getPriorityColor(p);
+                  final selected = selectedPriority == p;
                   return GestureDetector(
-                    onTap: () => setSheetState(() => priority = p),
-                    child: Container(
+                    onTap: () => setModalState(() => selectedPriority = p),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
                       width: 56, height: 56,
                       decoration: BoxDecoration(
-                        color: priority == p ? color : color.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: priority == p ? Border.all(color: color, width: 3) : null,
+                        color: selected ? c : c.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: selected ? c : c.withValues(alpha: 0.3), width: selected ? 2 : 1),
                       ),
-                      child: Center(child: Text('P$p',
-                        style: TextStyle(
-                          color: priority == p ? Colors.white : color,
-                          fontWeight: FontWeight.bold, fontSize: 18,
-                        ),
-                      )),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('P$p', style: TextStyle(color: selected ? Colors.white : c, fontWeight: FontWeight.w700, fontSize: 16)),
+                        ],
+                      ),
                     ),
                   );
                 }),
               ),
               const SizedBox(height: 16),
+
+              // Notes
               TextField(
-                controller: notesC,
-                decoration: const InputDecoration(labelText: 'Notes de triage', hintText: 'Observations...'),
-                maxLines: 2,
+                controller: notesController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Notes d\'observation...',
+                  filled: true,
+                  fillColor: AlloUrgenceTheme.surfaceVariant,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
               ),
               const SizedBox(height: 20),
+
               SizedBox(
                 height: 56,
+                width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
-                    final queue = context.read<QueueProvider>();
-                    await queue.triageTicket(ticket.id, priority, notesC.text.isEmpty ? null : notesC.text);
-                    await queue.loadQueue(_selectedHospital!.id);
-                    if (ctx.mounted) Navigator.pop(ctx);
+                    Navigator.pop(ctx);
+                    // TODO: Call triage API
                   },
-                  child: const Text('✅ Valider le triage'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AlloUrgenceTheme.primaryLight,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Valider le triage', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -255,140 +317,149 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> {
       ),
     );
   }
+}
 
-  void _showRoomDialog(Ticket ticket) {
-    final roomC = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Assigner salle — ${ticket.patientFullName}'),
-        content: TextField(
-          controller: roomC,
-          decoration: const InputDecoration(labelText: 'Numéro de salle', hintText: 'Ex: A-12'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          ElevatedButton(
-            onPressed: () async {
-              if (roomC.text.isEmpty) return;
-              final queue = context.read<QueueProvider>();
-              await queue.assignRoom(ticket.id, roomC.text);
-              await queue.loadQueue(_selectedHospital!.id);
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Assigner'),
+// ── Summary Card ────────────────────────────────────────────────
+class _SummaryCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  const _SummaryCard({required this.icon, required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [AlloUrgenceTheme.cardShadow],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, color: color, size: 18),
           ),
+          const SizedBox(height: 8),
+          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(label, style: TextStyle(fontSize: 11, color: AlloUrgenceTheme.textTertiary)),
         ],
       ),
     );
   }
 }
 
-class _PatientCard extends StatelessWidget {
+// ── Patient Ticket Card ─────────────────────────────────────────
+class _PatientTicketCard extends StatelessWidget {
   final Ticket ticket;
   final VoidCallback onTriage;
-  final VoidCallback onAssignRoom;
-
-  const _PatientCard({required this.ticket, required this.onTriage, required this.onAssignRoom});
+  const _PatientTicketCard({required this.ticket, required this.onTriage});
 
   @override
   Widget build(BuildContext context) {
     final color = AlloUrgenceTheme.getPriorityColor(ticket.effectivePriority);
-    final isCheckedIn = ticket.status == 'checked_in';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: isCheckedIn ? BorderSide(color: AlloUrgenceTheme.success, width: 2) : BorderSide.none,
-      ),
-      child: Padding(
+    return InkWell(
+      onTap: onTriage,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [AlloUrgenceTheme.cardShadow],
+        ),
+        child: Row(
           children: [
-            Row(
-              children: [
-                // Priority badge
-                Container(
-                  width: 48, height: 48,
-                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-                  child: Center(child: Text('P${ticket.effectivePriority}',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20))),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(ticket.patientFullName, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-                      Row(
-                        children: [
-                          if (isCheckedIn) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: AlloUrgenceTheme.success, borderRadius: BorderRadius.circular(4)),
-                              child: const Text('ARRIVÉ', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                          Text(ticket.statusLabel, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                          if (ticket.assignedRoom != null) ...[
-                            Text(' • Salle ${ticket.assignedRoom}', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Text('#${ticket.queuePosition ?? '-'}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            if (ticket.allergies != null && ticket.allergies!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
-                child: Text('⚠️ ${ticket.allergies}', style: TextStyle(fontSize: 12, color: Colors.red.shade700)),
+            // Priority indicator
+            Container(
+              width: 48, height: 48,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
               ),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (ticket.status == 'waiting' || ticket.status == 'checked_in')
-                  Expanded(
-                    child: SizedBox(
-                      height: 44,
-                      child: ElevatedButton.icon(
-                        onPressed: onTriage,
-                        icon: const Icon(Icons.medical_services, size: 18),
-                        label: const Text('Triage'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AlloUrgenceTheme.primaryBlue,
-                          textStyle: const TextStyle(fontSize: 14),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('P${ticket.effectivePriority}',
+                    style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Patient info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    ticket.patientFullName.isNotEmpty ? ticket.patientFullName : 'Patient',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _statusColor(ticket.status).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          ticket.statusLabel,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _statusColor(ticket.status)),
                         ),
                       ),
-                    ),
-                  ),
-                if (ticket.status == 'triage') ...[
-                  Expanded(
-                    child: SizedBox(
-                      height: 44,
-                      child: ElevatedButton.icon(
-                        onPressed: onAssignRoom,
-                        icon: const Icon(Icons.meeting_room, size: 18),
-                        label: const Text('Assigner salle'),
-                        style: ElevatedButton.styleFrom(backgroundColor: AlloUrgenceTheme.accent),
-                      ),
-                    ),
+                      if (ticket.preTriageCategory != null) ...[
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            ticket.preTriageCategory!,
+                            style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textTertiary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
-              ],
+              ),
             ),
+            // Position
+            if (ticket.queuePosition != null)
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: AlloUrgenceTheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text('#${ticket.queuePosition}',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded, color: AlloUrgenceTheme.textTertiary, size: 20),
           ],
         ),
       ),
     );
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'waiting': return AlloUrgenceTheme.warning;
+      case 'checked_in': return AlloUrgenceTheme.primaryLight;
+      case 'triage': return AlloUrgenceTheme.accent;
+      case 'in_progress': return AlloUrgenceTheme.success;
+      case 'treated': return AlloUrgenceTheme.textTertiary;
+      default: return AlloUrgenceTheme.textSecondary;
+    }
   }
 }

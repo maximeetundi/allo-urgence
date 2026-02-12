@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import './globals.css';
 
@@ -10,24 +10,38 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const router = useRouter();
+  const isLoginPage = pathname === '/';
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const token = localStorage.getItem('admin_token');
-    if (!token && !window.location.pathname.includes('/login')) {
+    if (!token && pathname !== '/') {
       router.push('/');
     }
-  }, [router]);
+  }, [pathname, router]);
 
   return (
     <html lang="fr">
-      <body className="bg-gray-50">
-        <div className="flex h-screen">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto p-8">
-            {children}
-          </main>
-        </div>
+      <head>
+        <title>Allo Urgence — Admin</title>
+        <meta name="description" content="Panneau d'administration Allo Urgence" />
+      </head>
+      <body className="bg-gray-50 min-h-screen" suppressHydrationWarning>
+        {isLoginPage ? (
+          <main className="min-h-screen">{children}</main>
+        ) : (
+          <div className="flex h-screen overflow-hidden">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto">
+              <div className="p-8 max-w-[1400px] mx-auto">
+                {mounted && children}
+              </div>
+            </main>
+          </div>
+        )}
       </body>
     </html>
   );

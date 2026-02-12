@@ -5,33 +5,20 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
-const path = require('path');
-const fs = require('fs');
-
-// Ensure data directory exists
-const dataDir = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-}
-
-// Initialize database
-const initDatabase = require('./db/pg_init');
-initDatabase();
 
 const app = express();
 const server = http.createServer(app);
 
-// CORS configuration
+// CORS
 const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-        ? ['https://api.allo-urgence.tech-afm.com', 'https://admin.allo-urgence.tech-afm.com', 'https://allo-urgence.tech-afm.com']
-        : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3355', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3355'],
+    origin: process.env.NODE_ENV === 'production'
+        ? ['https://api.allo-urgence.tech-afm.com', 'https://admin.allo-urgence.tech-afm.com']
+        : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3355', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001'],
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-    credentials: true
+    credentials: true,
 };
 
 const io = new Server(server, { cors: corsOptions });
-
 app.set('io', io);
 
 // Middleware
@@ -43,10 +30,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
     const start = Date.now();
     res.on('finish', () => {
-        const duration = Date.now() - start;
-        if (duration > 300) {
-            console.warn(`⚠️ Réponse lente: ${req.method} ${req.path} — ${duration}ms`);
-        }
+        const ms = Date.now() - start;
+        if (ms > 500) console.warn(`⚠️ Slow: ${req.method} ${req.path} — ${ms}ms`);
     });
     next();
 });
@@ -57,7 +42,7 @@ app.use('/api/tickets', require('./routes/ticket.routes'));
 app.use('/api/hospitals', require('./routes/hospital.routes'));
 app.use('/api/admin', require('./routes/admin.routes'));
 
-// Health check
+// Health
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', service: 'Allo Urgence API', version: '1.0.0', timestamp: new Date().toISOString() });
 });
@@ -67,25 +52,33 @@ const { initializeSocket } = require('./socket/index');
 initializeSocket(io);
 
 // Error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
     console.error('❌ Erreur:', err.message);
     res.status(500).json({ error: 'Erreur interne du serveur' });
 });
 
+// ── Start ───────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3355;
-const API_URL = process.env.API_URL || `http://localhost:${PORT}`;
-server.listen(PORT, () => {
-    console.log('');
-    console.log('🏥 ═══════════════════════════════════════');
-    console.log('🏥  Allo Urgence API Server');
-    console.log(`🏥  Port: ${PORT}`);
-    console.log(`🏥  URL:  ${API_URL}`);
-    console.log(`🏥  Env:  ${process.env.NODE_ENV || 'development'}`);
-    console.log('🏥 ═══════════════════════════════════════');
-    console.log('');
-    console.log('📡 WebSocket activé');
-    console.log(`🌐 Health: ${API_URL}/api/health`);
-    console.log('');
+
+async function start() {
+    // Initialize database (create tables + seed)
+    const initDatabase = require('./db/pg_init');
+    await initDatabase();
+
+    server.listen(PORT, () => {
+        console.log('');
+        console.log('🏥 ═══════════════════════════════════════');
+        console.log('🏥  Allo Urgence API Server');
+        console.log(`🏥  Port: ${PORT}`);
+        console.log(`🏥  Env:  ${process.env.NODE_ENV || 'development'}`);
+        console.log('🏥 ═══════════════════════════════════════');
+        console.log('');
+    });
+}
+
+start().catch((err) => {
+    console.error('❌ Failed to start:', err.message);
+    process.exit(1);
 });
 
 module.exports = { app, server, io };

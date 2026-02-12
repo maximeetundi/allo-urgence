@@ -11,6 +11,7 @@ class User {
   final String? allergies;
   final String? conditionsMedicales;
   final String? medicaments;
+  final bool emailVerified;
 
   User({
     required this.id,
@@ -25,6 +26,7 @@ class User {
     this.allergies,
     this.conditionsMedicales,
     this.medicaments,
+    this.emailVerified = false,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class User {
       allergies: json['allergies'],
       conditionsMedicales: json['conditions_medicales'],
       medicaments: json['medicaments'],
+      emailVerified: json['email_verified'] == true,
     );
   }
 

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/ticket_provider.dart';
 import 'providers/queue_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -22,13 +22,19 @@ class AlloUrgenceApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TicketProvider()),
         ChangeNotifierProvider(create: (_) => QueueProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..init()),
       ],
-      child: MaterialApp(
-        title: 'Allo Urgence',
-        debugShowCheckedModeBanner: false,
-        theme: AlloUrgenceTheme.lightTheme,
-        themeMode: ThemeMode.light,
-        home: const SplashScreen(),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Allo Urgence',
+            debugShowCheckedModeBanner: false,
+            theme: AlloUrgenceTheme.lightTheme,
+            darkTheme: AlloUrgenceTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            home: const SplashScreen(),
+          );
+        },
       ),
     );
   }

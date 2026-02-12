@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const db = require('../db/connection');
+const db = require('../db/pg_connection');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'allo-urgence-dev-secret';
 
@@ -9,14 +8,13 @@ function authenticateToken(req, res, next) {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-        return res.status(401).json({ error: 'Token d\'authentification requis' });
+        return res.status(401).json({ error: "Token d'authentification requis" });
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;
+        req.user = jwt.verify(token, JWT_SECRET);
         next();
-    } catch (err) {
+    } catch {
         return res.status(403).json({ error: 'Token invalide ou expiré' });
     }
 }
@@ -32,17 +30,11 @@ function requireRole(...roles) {
 }
 
 function auditLog(action, userId, details) {
-    try {
-        db.insert('audit_log', {
-            id: uuidv4(),
-            user_id: userId || 'anonymous',
-            action,
-            details: typeof details === 'string' ? details : JSON.stringify(details),
-            created_at: new Date().toISOString()
-        });
-    } catch (err) {
-        console.error('Audit log error:', err.message);
-    }
+    db.insert('audit_log', {
+        user_id: userId || 'anonymous',
+        action,
+        details: typeof details === 'string' ? details : JSON.stringify(details),
+    }).catch((err) => console.error('Audit log error:', err.message));
 }
 
-module.exports = { authenticateToken, requireRole, auditLog };
+module.exports = { authenticateToken, requireRole, auditLog, JWT_SECRET };

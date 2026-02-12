@@ -115,6 +115,42 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> verifyEmail(String code) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await apiService.post('/auth/verify-email', {'code': code});
+      if (data['verified'] == true) {
+        // Re-fetch user to get updated email_verified status
+        final userData = await apiService.get('/auth/me');
+        _user = User.fromJson(userData);
+        _loading = false;
+        notifyListeners();
+        return true;
+      }
+      _error = data['error'] ?? 'Code incorrect';
+      _loading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> resendVerification() async {
+    try {
+      await apiService.post('/auth/resend-verification', {});
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     _user = null;
     _token = null;

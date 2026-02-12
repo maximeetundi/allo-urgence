@@ -14,41 +14,55 @@ class PreTriageScreen extends StatefulWidget {
   State<PreTriageScreen> createState() => _PreTriageScreenState();
 }
 
-class _PreTriageScreenState extends State<PreTriageScreen> {
-  int _step = 0; // 0=hospital, 1=category, 2=questions, 3=confirm
+class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProviderStateMixin {
+  int _step = 0;
   Hospital? _selectedHospital;
   TriageCategory? _selectedCategory;
   List<Hospital> _hospitals = [];
-  Map<String, dynamic> _answers = {};
   double _painLevel = 0;
   bool _breathingDifficulty = false;
   String _symptomDuration = '1_24h';
   bool _loading = false;
 
+  late AnimationController _animController;
+
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    )..forward();
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
-    // Load hospitals
     try {
       final data = await apiService.get('/hospitals');
+      if (!mounted) return;
       setState(() {
         _hospitals = (data['hospitals'] as List).map((h) => Hospital.fromJson(h)).toList();
       });
-    } catch (e) {
-      // fallback
-    }
-    // Load triage categories
+    } catch (_) {}
+    if (!mounted) return;
     final ticket = context.read<TicketProvider>();
     await ticket.loadTriageCategories();
   }
 
+  void _goToStep(int step) {
+    _animController.reset();
+    setState(() => _step = step);
+    _animController.forward();
+  }
+
   Future<void> _createTicket() async {
     if (_selectedHospital == null || _selectedCategory == null) return;
-
     setState(() => _loading = true);
 
     final ticket = context.read<TicketProvider>();
@@ -81,29 +95,65 @@ class _PreTriageScreenState extends State<PreTriageScreen> {
     final ticket = context.watch<TicketProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_stepTitle),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: _step > 0 ? () => setState(() => _step--) : () => Navigator.pop(context),
-        ),
-      ),
-      body: Column(
-        children: [
-          // Progress bar
-          LinearProgressIndicator(
-            value: (_step + 1) / 4,
-            backgroundColor: Colors.grey[200],
-            color: AlloUrgenceTheme.primaryBlue,
-            minHeight: 4,
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: _buildStep(ticket),
+      // backgroundColor follows theme
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Custom AppBar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                    onPressed: _step > 0 ? () => _goToStep(_step - 1) : () => Navigator.pop(context),
+                  ),
+                  Expanded(
+                    child: Text(
+                      _stepTitle,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // Progress bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Row(
+                children: List.generate(4, (i) => Expanded(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    height: 4,
+                    margin: EdgeInsets.only(right: i < 3 ? 6 : 0),
+                    decoration: BoxDecoration(
+                      color: i <= _step ? AlloUrgenceTheme.primaryLight : AlloUrgenceTheme.divider,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                )),
+              ),
+            ),
+
+            // Content
+            Expanded(
+              child: FadeTransition(
+                opacity: _animController,
+                child: SlideTransition(
+                  position: Tween<Offset>(begin: const Offset(0.03, 0), end: Offset.zero)
+                    .animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut)),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: _buildStep(ticket),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -128,126 +178,254 @@ class _PreTriageScreenState extends State<PreTriageScreen> {
     }
   }
 
-  // Step 0: Hospital selection
+  // ── Step 0: Hospital Selection ────────────────────────────────
   Widget _buildHospitalStep() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Où souhaitez-vous aller ?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 16),
-        ..._hospitals.map((h) => _SelectionCard(
-          title: h.name,
-          subtitle: h.address,
-          icon: Icons.local_hospital,
-          selected: _selectedHospital?.id == h.id,
-          onTap: () => setState(() { _selectedHospital = h; _step = 1; }),
+        const Text('Où souhaitez-vous aller ?',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+        const SizedBox(height: 6),
+        Text('Sélectionnez un hôpital proche de vous',
+          style: TextStyle(fontSize: 14, color: AlloUrgenceTheme.textSecondary)),
+        const SizedBox(height: 20),
+        ..._hospitals.asMap().entries.map((entry) => TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(milliseconds: 400 + entry.key * 100),
+          builder: (_, value, child) => Opacity(opacity: value, child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child)),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _HospitalCard(
+              hospital: entry.value,
+              selected: _selectedHospital?.id == entry.value.id,
+              onTap: () { setState(() => _selectedHospital = entry.value); _goToStep(1); },
+            ),
+          ),
         )),
       ],
     );
   }
 
-  // Step 1: Category selection
+  // ── Step 1: Category Selection ────────────────────────────────
   Widget _buildCategoryStep(TicketProvider ticket) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Quel est votre problème principal ?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Text('Choisissez la catégorie la plus proche de votre situation.', style: TextStyle(color: Colors.grey[600])),
+        const Text('Quel est votre problème ?',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+        const SizedBox(height: 6),
+        Text('Choisissez la catégorie la plus proche',
+          style: TextStyle(fontSize: 14, color: AlloUrgenceTheme.textSecondary)),
         const SizedBox(height: 20),
-        ...ticket.categories.map((cat) => _CategoryCard(
-          category: cat,
-          selected: _selectedCategory?.id == cat.id,
-          onTap: () => setState(() { _selectedCategory = cat; _step = 2; }),
+        ...ticket.categories.asMap().entries.map((entry) => TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(milliseconds: 300 + entry.key * 80),
+          builder: (_, value, child) => Opacity(opacity: value, child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child)),
+          child: _CategoryCard(
+            category: entry.value,
+            selected: _selectedCategory?.id == entry.value.id,
+            onTap: () { setState(() => _selectedCategory = entry.value); _goToStep(2); },
+          ),
         )),
       ],
     );
   }
 
-  // Step 2: Follow-up questions
+  // ── Step 2: Questions ─────────────────────────────────────────
   Widget _buildQuestionsStep() {
+    final painColor = _painLevel >= 8 ? AlloUrgenceTheme.error
+      : _painLevel >= 5 ? AlloUrgenceTheme.warning
+      : AlloUrgenceTheme.success;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Quelques questions rapides', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+        const Text('Quelques questions rapides',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
         const SizedBox(height: 24),
 
         // Pain level
-        const Text('Niveau de douleur', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Text('0', style: TextStyle(fontSize: 16)),
-            Expanded(
-              child: Slider(
-                value: _painLevel,
-                min: 0, max: 10,
-                divisions: 10,
-                label: _painLevel.round().toString(),
-                activeColor: _painLevel >= 8 ? AlloUrgenceTheme.error : _painLevel >= 5 ? AlloUrgenceTheme.warning : AlloUrgenceTheme.success,
-                onChanged: (v) => setState(() => _painLevel = v),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [AlloUrgenceTheme.cardShadow],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.sentiment_dissatisfied_rounded, color: painColor, size: 22),
+                  const SizedBox(width: 8),
+                  const Text('Niveau de douleur', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                ],
               ),
-            ),
-            Text('10', style: const TextStyle(fontSize: 16)),
-          ],
+              const SizedBox(height: 16),
+              Center(
+                child: Text(
+                  '${_painLevel.round()}',
+                  style: TextStyle(fontSize: 48, fontWeight: FontWeight.w800, color: painColor),
+                ),
+              ),
+              SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: painColor,
+                  thumbColor: painColor,
+                  inactiveTrackColor: painColor.withValues(alpha: 0.15),
+                  trackHeight: 6,
+                ),
+                child: Slider(
+                  value: _painLevel,
+                  min: 0, max: 10,
+                  divisions: 10,
+                  onChanged: (v) => setState(() => _painLevel = v),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Aucune', style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textTertiary)),
+                  Text('Extrême', style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textTertiary)),
+                ],
+              ),
+            ],
+          ),
         ),
-        Center(child: Text('${_painLevel.round()}/10', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _painLevel >= 8 ? AlloUrgenceTheme.error : Colors.black))),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
 
         // Breathing
-        _QuestionSwitch(
-          question: 'Avez-vous des difficultés à respirer ?',
-          value: _breathingDifficulty,
-          onChanged: (v) => setState(() => _breathingDifficulty = v),
+        _QuestionCard(
+          icon: Icons.air_rounded,
+          iconColor: _breathingDifficulty ? AlloUrgenceTheme.error : AlloUrgenceTheme.accent,
+          question: 'Difficultés respiratoires ?',
+          trailing: Switch.adaptive(
+            value: _breathingDifficulty,
+            activeColor: AlloUrgenceTheme.error,
+            onChanged: (v) => setState(() => _breathingDifficulty = v),
+          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
         // Duration
-        const Text('Depuis combien de temps ?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 12),
-        ...['under_1h', '1_24h', 'over_24h'].map((v) {
-          final labels = {'under_1h': 'Moins d\'une heure', '1_24h': '1 à 24 heures', 'over_24h': 'Plus de 24 heures'};
-          return RadioListTile<String>(
-            title: Text(labels[v]!, style: const TextStyle(fontSize: 16)),
-            value: v,
-            groupValue: _symptomDuration,
-            onChanged: (val) => setState(() => _symptomDuration = val!),
-          );
-        }),
-        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [AlloUrgenceTheme.cardShadow],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.schedule_rounded, color: AlloUrgenceTheme.primaryLight, size: 22),
+                  const SizedBox(width: 8),
+                  const Text('Depuis combien de temps ?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...['under_1h', '1_24h', 'over_24h'].map((v) {
+                final labels = {'under_1h': 'Moins d\'une heure', '1_24h': '1 à 24 heures', 'over_24h': 'Plus de 24 heures'};
+                final icons = {'under_1h': Icons.bolt_rounded, '1_24h': Icons.hourglass_bottom_rounded, 'over_24h': Icons.calendar_today_rounded};
+                final selected = _symptomDuration == v;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () => setState(() => _symptomDuration = v),
+                    borderRadius: BorderRadius.circular(14),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: selected ? AlloUrgenceTheme.primaryLight.withValues(alpha: 0.08) : AlloUrgenceTheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: selected ? AlloUrgenceTheme.primaryLight.withValues(alpha: 0.4) : Colors.transparent),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(icons[v]!, size: 18, color: selected ? AlloUrgenceTheme.primaryLight : AlloUrgenceTheme.textTertiary),
+                          const SizedBox(width: 12),
+                          Text(labels[v]!, style: TextStyle(fontSize: 15, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
+                          const Spacer(),
+                          if (selected) const Icon(Icons.check_circle_rounded, color: AlloUrgenceTheme.primaryLight, size: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 28),
 
         SizedBox(
           height: 56,
+          width: double.infinity,
           child: ElevatedButton(
-            onPressed: () => setState(() => _step = 3),
-            child: const Text('Continuer'),
+            onPressed: () => _goToStep(3),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AlloUrgenceTheme.primaryLight,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 0,
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Continuer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                SizedBox(width: 8),
+                Icon(Icons.arrow_forward_rounded, size: 20),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  // Step 3: Confirmation
+  // ── Step 3: Confirmation ──────────────────────────────────────
   Widget _buildConfirmStep() {
+    final priority = _selectedCategory?.priority ?? 5;
+    final color = AlloUrgenceTheme.getPriorityColor(priority);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Priority card
         Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: AlloUrgenceTheme.getPriorityColor(_selectedCategory?.priority ?? 5).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AlloUrgenceTheme.getPriorityColor(_selectedCategory?.priority ?? 5).withOpacity(0.3)),
+            gradient: LinearGradient(
+              colors: [color.withValues(alpha: 0.12), color.withValues(alpha: 0.04)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
           ),
           child: Column(
             children: [
-              Icon(AlloUrgenceTheme.getPriorityIcon(_selectedCategory?.priority ?? 5), size: 48,
-                color: AlloUrgenceTheme.getPriorityColor(_selectedCategory?.priority ?? 5)),
-              const SizedBox(height: 12),
-              Text('Niveau estimé', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(AlloUrgenceTheme.getPriorityIcon(priority), size: 28, color: color),
+              ),
+              const SizedBox(height: 14),
+              Text('Niveau estimé', style: TextStyle(fontSize: 14, color: AlloUrgenceTheme.textSecondary)),
               const SizedBox(height: 4),
-              Text(AlloUrgenceTheme.getPriorityLabel(_selectedCategory?.priority ?? 5),
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AlloUrgenceTheme.getPriorityColor(_selectedCategory?.priority ?? 5))),
+              Text(
+                AlloUrgenceTheme.getPriorityLabel(priority),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: color),
+              ),
+              Text('P$priority', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: color.withValues(alpha: 0.7))),
             ],
           ),
         ),
@@ -255,19 +433,20 @@ class _PreTriageScreenState extends State<PreTriageScreen> {
 
         // Disclaimer
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.amber.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.amber.shade200),
+            color: AlloUrgenceTheme.warning.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
             children: [
-              const Icon(Icons.info, color: Colors.amber, size: 28),
-              const SizedBox(width: 12),
+              Icon(Icons.info_outline_rounded, size: 18, color: AlloUrgenceTheme.warning),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text('Le niveau final sera confirmé par un professionnel de santé.',
-                  style: TextStyle(fontSize: 14, color: Colors.amber.shade900)),
+                child: Text(
+                  'Le niveau final sera confirmé par un professionnel de santé.',
+                  style: TextStyle(fontSize: 13, color: AlloUrgenceTheme.textSecondary, fontStyle: FontStyle.italic),
+                ),
               ),
             ],
           ),
@@ -275,122 +454,149 @@ class _PreTriageScreenState extends State<PreTriageScreen> {
         const SizedBox(height: 20),
 
         // Summary
-        _summaryRow('Hôpital', _selectedHospital?.name ?? '-'),
-        _summaryRow('Motif', _selectedCategory?.label ?? '-'),
-        _summaryRow('Douleur', '${_painLevel.round()}/10'),
-        _summaryRow('Difficulté respiratoire', _breathingDifficulty ? 'Oui' : 'Non'),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [AlloUrgenceTheme.cardShadow],
+          ),
+          child: Column(
+            children: [
+              _SummaryRow(icon: Icons.local_hospital_rounded, label: 'Hôpital', value: _selectedHospital?.name ?? '-'),
+              const Divider(height: 20),
+              _SummaryRow(icon: Icons.category_rounded, label: 'Motif', value: _selectedCategory?.label ?? '-'),
+              const Divider(height: 20),
+              _SummaryRow(icon: Icons.sentiment_dissatisfied_rounded, label: 'Douleur', value: '${_painLevel.round()}/10'),
+              const Divider(height: 20),
+              _SummaryRow(icon: Icons.air_rounded, label: 'Respiration', value: _breathingDifficulty ? 'Difficile' : 'Normale'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 28),
 
-        const SizedBox(height: 32),
         SizedBox(
           height: 60,
           child: ElevatedButton(
             onPressed: _loading ? null : _createTicket,
-            style: ElevatedButton.styleFrom(backgroundColor: AlloUrgenceTheme.success),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AlloUrgenceTheme.success,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              elevation: 0,
+            ),
             child: _loading
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text('✅ Confirmer et obtenir mon ticket', style: TextStyle(fontSize: 18)),
+              ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle_outline_rounded, size: 22),
+                    SizedBox(width: 10),
+                    Text('Confirmer et obtenir mon ticket', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  ],
+                ),
           ),
         ),
       ],
     );
   }
-
-  Widget _summaryRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
 }
 
-class _SelectionCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
+// ── Hospital Card ───────────────────────────────────────────────
+class _HospitalCard extends StatelessWidget {
+  final Hospital hospital;
   final bool selected;
   final VoidCallback onTap;
-
-  const _SelectionCard({required this.title, required this.subtitle, required this.icon, required this.selected, required this.onTap});
+  const _HospitalCard({required this.hospital, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: selected ? const BorderSide(color: AlloUrgenceTheme.primaryBlue, width: 2) : BorderSide.none,
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(color: AlloUrgenceTheme.primaryBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: Icon(icon, color: AlloUrgenceTheme.primaryBlue),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AlloUrgenceTheme.primaryLight : Colors.transparent,
+            width: selected ? 2 : 1,
+          ),
+          boxShadow: [AlloUrgenceTheme.cardShadow],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48, height: 48,
+              decoration: BoxDecoration(
+                gradient: AlloUrgenceTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(14),
               ),
-              const SizedBox(width: 16),
-              Expanded(child: Column(
+              child: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                  Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                  Text(hospital.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(hospital.address, style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
-              )),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: AlloUrgenceTheme.textTertiary),
+          ],
         ),
       ),
     );
   }
 }
 
+// ── Category Card ───────────────────────────────────────────────
 class _CategoryCard extends StatelessWidget {
   final TriageCategory category;
   final bool selected;
   final VoidCallback onTap;
-
   const _CategoryCard({required this.category, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final color = AlloUrgenceTheme.getPriorityColor(category.priority);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: selected ? BorderSide(color: color, width: 2) : BorderSide.none,
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: selected ? color : Colors.transparent, width: selected ? 2 : 1),
+            boxShadow: [AlloUrgenceTheme.cardShadow],
+          ),
           child: Row(
             children: [
               Text(category.icon, style: const TextStyle(fontSize: 28)),
-              const SizedBox(width: 16),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(category.label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                  Text(category.description, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                ],
-              )),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(category.label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(category.description, style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-                child: Text('P${category.priority}', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                child: Text('P${category.priority}', style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
               ),
             ],
           ),
@@ -400,32 +606,52 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
-class _QuestionSwitch extends StatelessWidget {
+// ── Question Card ───────────────────────────────────────────────
+class _QuestionCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
   final String question;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _QuestionSwitch({required this.question, required this.value, required this.onChanged});
+  final Widget trailing;
+  const _QuestionCard({required this.icon, required this.iconColor, required this.question, required this.trailing});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: value ? Colors.red.shade50 : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: value ? Colors.red.shade200 : Colors.grey.shade200),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [AlloUrgenceTheme.cardShadow],
       ),
       child: Row(
         children: [
-          Expanded(child: Text(question, style: const TextStyle(fontSize: 16))),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: AlloUrgenceTheme.error,
-          ),
+          Icon(icon, color: iconColor, size: 22),
+          const SizedBox(width: 12),
+          Expanded(child: Text(question, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+          trailing,
         ],
       ),
+    );
+  }
+}
+
+// ── Summary Row ─────────────────────────────────────────────────
+class _SummaryRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _SummaryRow({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AlloUrgenceTheme.textTertiary),
+        const SizedBox(width: 10),
+        Text(label, style: TextStyle(fontSize: 14, color: AlloUrgenceTheme.textSecondary)),
+        const Spacer(),
+        Flexible(child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), textAlign: TextAlign.right)),
+      ],
     );
   }
 }

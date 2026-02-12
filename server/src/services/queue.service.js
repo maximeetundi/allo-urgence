@@ -1,54 +1,55 @@
-const db = require('../db/connection');
-const { getEstimatedWait } = require('./triage.service');
+const db = require('../db/pg_connection');
 
-function getQueueCounts(hospitalId) {
-  const tickets = db.findMany('tickets', t =>
-    t.hospital_id === hospitalId && ['waiting', 'checked_in', 'triage'].includes(t.status)
+async function recalculateQueue(hospitalId) {
+  const result = await db.query(
+    `SELECT id, priority_level, validated_priority, created_at
+     FROM tickets
+     WHERE hospital_id = $1 AND status IN ('waiting', 'checked_in', 'triage')
+     ORDER BY COALESCE(validated_priority, priority_level) ASC, created_at ASC`,
+    [hospitalId],
   );
-  const counts = {};
-  tickets.forEach(t => {
-    const p = t.validated_priority || t.priority_level;
-    counts[p] = (counts[p] || 0) + 1;
-  });
-  return counts;
-}
 
-function recalculateAllPositions(hospitalId) {
-  const queueCounts = getQueueCounts(hospitalId);
-  const tickets = db.findMany('tickets', t =>
-    t.hospital_id === hospitalId && ['waiting', 'checked_in', 'triage'].includes(t.status)
-  ).sort((a, b) => {
-    const pa = a.validated_priority || a.priority_level;
-    const pb = b.validated_priority || b.priority_level;
-    if (pa !== pb) return pa - pb;
-    return new Date(a.created_at) - new Date(b.created_at);
-  });
+  for (let i = 0; i < result.rows.length; i++) {
+    const ticket = result.rows[i];
+    const priority = ticket.validated_priority || ticket.priority_level;
+    const baseWait = { 1: 0, 2: 15, 3: 30, 4: 60, 5: 120 }[priority] || 60;
 
-  tickets.forEach((ticket, index) => {
-    const effectivePriority = ticket.validated_priority || ticket.priority_level;
-    db.update('tickets', ticket.id, {
-      queue_position: index + 1,
-      estimated_wait_minutes: getEstimatedWait(effectivePriority, queueCounts)
+    await db.update('tickets', ticket.id, {
+      queue_position: i + 1,
+      estimated_wait_minutes: baseWait + i * 10,
     });
+  }
+}
+
+async function getQueueSummary(hospitalId) {
+  const result = await db.query(
+    `SELECT status, COALESCE(validated_priority, priority_level) AS prio, COUNT(*)::int AS cnt
+     FROM tickets
+     WHERE hospital_id = $1 AND status IN ('waiting','checked_in','triage','in_progress')
+     GROUP BY status, prio
+     ORDER BY prio`,
+    [hospitalId],
+  );
+
+  const byPriority = {};
+  let totalActive = 0;
+  result.rows.forEach((r) => {
+    byPriority[r.prio] = (byPriority[r.prio] || 0) + r.cnt;
+    totalActive += r.cnt;
   });
 
-  return tickets.length;
-}
-
-function getQueueSummary(hospitalId) {
-  const counts = getQueueCounts(hospitalId);
-  const total = db.count('tickets', t =>
-    t.hospital_id === hospitalId && ['waiting', 'checked_in', 'triage', 'in_progress'].includes(t.status)
+  const avgResult = await db.query(
+    `SELECT COALESCE(AVG(estimated_wait_minutes), 0)::int AS avg
+     FROM tickets
+     WHERE hospital_id = $1 AND status IN ('waiting','checked_in')`,
+    [hospitalId],
   );
 
-  const waitingTickets = db.findMany('tickets', t =>
-    t.hospital_id === hospitalId && ['waiting', 'checked_in'].includes(t.status)
-  );
-  const avgWait = waitingTickets.length > 0
-    ? Math.round(waitingTickets.reduce((sum, t) => sum + (t.estimated_wait_minutes || 0), 0) / waitingTickets.length)
-    : 0;
-
-  return { hospitalId, totalActive: total, byPriority: counts, averageWaitMinutes: avgWait };
+  return {
+    totalActive,
+    byPriority,
+    averageWaitMinutes: avgResult.rows[0]?.avg || 0,
+  };
 }
 
-module.exports = { getQueueCounts, recalculateAllPositions, getQueueSummary };
+module.exports = { recalculateQueue, getQueueSummary };
