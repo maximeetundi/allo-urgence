@@ -183,7 +183,7 @@ export default function HospitalsPage() {
 
             {hospital.latitude && hospital.longitude && (
               <div className="mt-2 text-[10px] text-gray-300 font-mono">
-                {hospital.latitude?.toFixed(4)}, {hospital.longitude?.toFixed(4)}
+                {Number(hospital.latitude).toFixed(4)}, {Number(hospital.longitude).toFixed(4)}
               </div>
             )}
           </div>
