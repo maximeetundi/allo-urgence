@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3355';
+const isProduction = process.env.NODE_ENV === 'production';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (isProduction ? 'https://api.allo-urgence.tech-afm.com' : 'http://localhost:3355');
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
