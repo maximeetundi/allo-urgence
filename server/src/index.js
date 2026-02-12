@@ -15,7 +15,7 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // Initialize database
-const initDatabase = require('./db/init');
+const initDatabase = require('./db/pg_init');
 initDatabase();
 
 const app = express();

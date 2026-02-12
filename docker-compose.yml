@@ -13,6 +13,11 @@ services:
       - API_URL=https://api.allo-urgence.tech-afm.com
       - JWT_SECRET=${JWT_SECRET:-allo-urgence-secret-change-me}
       - JWT_EXPIRES_IN=24h
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=allourgence
+      - DB_USER=allourgence
+      - DB_PASSWORD=${DB_PASSWORD:-secretpassword}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.allo-urgence.rule=Host(`api.allo-urgence.tech-afm.com`)"
@@ -24,6 +29,8 @@ services:
     networks:
       - allo-urgence-network
       - traefik-public
+    depends_on:
+      - db
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3355/api/health"]
       interval: 30s
@@ -52,27 +59,32 @@ services:
       - allo-urgence-network
       - traefik-public
     depends_on:
-      - backend
+      - db
 
-  # Si vous voulez ajouter une vraie base de données plus tard (PostgreSQL)
-  # db:
-  #   image: postgres:15-alpine
-  #   container_name: allo-urgence-db
-  #   restart: unless-stopped
-  #   environment:
-  #     - POSTGRES_USER=allourgence
-  #     - POSTGRES_PASSWORD=${DB_PASSWORD:-secretpassword}
-  #     - POSTGRES_DB=allourgence
-  #   volumes:
-  #     - postgres-data:/var/lib/postgresql/data
-  #   networks:
-  #     - allo-urgence-network
-  #   ports:
-  #     - "5432:5432"
+  db:
+    image: postgres:15-alpine
+    container_name: allo-urgence-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=allourgence
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-secretpassword}
+      - POSTGRES_DB=allourgence
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./server/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - allo-urgence-network
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U allourgence -d allourgence"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   backend-data:
-  # postgres-data:
+  postgres-data:
 
 networks:
   allo-urgence-network:
