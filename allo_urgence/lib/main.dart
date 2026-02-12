@@ -27,7 +27,6 @@ class AlloUrgenceApp extends StatelessWidget {
         title: 'Allo Urgence',
         debugShowCheckedModeBanner: false,
         theme: AlloUrgenceTheme.lightTheme,
-        darkTheme: AlloUrgenceTheme.darkTheme,
         themeMode: ThemeMode.light,
         home: const SplashScreen(),
       ),
