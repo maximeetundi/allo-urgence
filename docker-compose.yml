@@ -6,22 +6,53 @@ services:
     container_name: allo-urgence-backend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3355:3355"
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=3355
+      - API_URL=https://api.allo-urgence.tech-afm.com
       - JWT_SECRET=${JWT_SECRET:-allo-urgence-secret-change-me}
       - JWT_EXPIRES_IN=24h
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.allo-urgence.rule=Host(`api.allo-urgence.tech-afm.com`)"
+      - "traefik.http.routers.allo-urgence.entrypoints=websecure"
+      - "traefik.http.routers.allo-urgence.tls.certresolver=letsencrypt"
+      - "traefik.http.services.allo-urgence.loadbalancer.server.port=3355"
     volumes:
       - backend-data:/app/data
     networks:
       - allo-urgence-network
+      - traefik-public
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3355/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 5s
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: allo-urgence-admin
+    restart: unless-stopped
+    ports:
+      - "3356:3356"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://api.allo-urgence.tech-afm.com
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.allo-urgence-admin.rule=Host(`admin.allo-urgence.tech-afm.com`)"
+      - "traefik.http.routers.allo-urgence-admin.entrypoints=websecure"
+      - "traefik.http.routers.allo-urgence-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.services.allo-urgence-admin.loadbalancer.server.port=3356"
+    networks:
+      - allo-urgence-network
+      - traefik-public
+    depends_on:
+      - backend
 
   # Si vous voulez ajouter une vraie base de données plus tard (PostgreSQL)
   # db:
@@ -46,3 +77,5 @@ volumes:
 networks:
   allo-urgence-network:
     driver: bridge
+  traefik-public:
+    external: true

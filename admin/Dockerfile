@@ -1,18 +1,20 @@
-# Backend - Node.js 20
+# Admin Panel - Next.js
 FROM node:20-alpine
 
 WORKDIR /app
 
 # Copier package.json et installer dépendances
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Copier le code source
-COPY src/ ./src/
-COPY data/ ./data/
+COPY . .
+
+# Build l'application
+RUN npm run build
 
 # Exposer le port
-EXPOSE 3355
+EXPOSE 3356
 
 # Commande de démarrage
 CMD ["npm", "start"]

@@ -44,6 +44,18 @@ function initDatabase() {
   const nurseHash = bcrypt.hashSync('nurse123', 10);
   const doctorHash = bcrypt.hashSync('doctor123', 10);
   const patientHash = bcrypt.hashSync('patient123', 10);
+  const adminHash = bcrypt.hashSync('admin123', 10);
+
+  db.insert('users', {
+    id: uuidv4(),
+    role: 'admin',
+    email: 'admin@allourgence.ca',
+    password_hash: adminHash,
+    nom: 'Admin',
+    prenom: 'Super',
+    telephone: '514-555-0000',
+    created_at: new Date().toISOString()
+  });
 
   db.insert('users', {
     id: uuidv4(),
@@ -83,6 +95,7 @@ function initDatabase() {
 
   console.log('');
   console.log('✅ Base de données initialisée avec données de démo');
+  console.log('   👤 Admin:     admin@allourgence.ca / admin123');
   console.log('   👤 Patient:   patient@test.ca / patient123');
   console.log('   👩‍⚕️ Infirmier: nurse@allourgence.ca / nurse123');
   console.log('   👨‍⚕️ Médecin:   doctor@allourgence.ca / doctor123');
