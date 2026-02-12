@@ -1,0 +1,114 @@
+{
+  "users": [
+    {
+      "id": "da19850e-f802-4d64-8bab-0a9c9820bda8",
+      "role": "nurse",
+      "email": "nurse@allourgence.ca",
+      "password_hash": "$2a$10$x4J26GuV0uqoxheGu9muAeYjWsJYv52s53mbLtEy7crR.v155CJES",
+      "nom": "Tremblay",
+      "prenom": "Marie",
+      "telephone": "514-555-0101",
+      "created_at": "2026-02-12T13:03:39.174Z"
+    },
+    {
+      "id": "cb6751e8-c7a2-4236-8059-bd7bd39ffdf6",
+      "role": "doctor",
+      "email": "doctor@allourgence.ca",
+      "password_hash": "$2a$10$B6A8ytPEFyI5uWh/j7A6o.VUIf6LG5.XQZf0VNstA1iNcMDsgUsfe",
+      "nom": "Gagnon",
+      "prenom": "Jean",
+      "telephone": "514-555-0202",
+      "created_at": "2026-02-12T13:03:39.179Z"
+    },
+    {
+      "id": "f5ec8b6f-353e-4ae3-b43f-764e23fbb5e7",
+      "role": "patient",
+      "email": "patient@test.ca",
+      "password_hash": "$2a$10$.gTrXn.i3O9l6naTUdqYwORNJYZcdSs0An6PIwgEFXZWTIlg/rPjW",
+      "nom": "Bouchard",
+      "prenom": "Luc",
+      "telephone": "514-555-0303",
+      "date_naissance": "1985-05-15",
+      "ramq_number": "BOUL85051599",
+      "contact_urgence": "Sophie Bouchard - 514-555-0304",
+      "created_at": "2026-02-12T13:03:39.180Z"
+    }
+  ],
+  "hospitals": [
+    {
+      "id": "6e489cec-1070-4cd4-bbed-f972d511e304",
+      "name": "Hôpital Général de Montréal",
+      "address": "1650 Avenue Cedar, Montréal, QC H3G 1A4",
+      "latitude": 45.4735,
+      "longitude": -73.592,
+      "capacity": 150,
+      "created_at": "2026-02-12T13:03:38.408Z"
+    },
+    {
+      "id": "7e874e50-fb11-4074-977a-8b76ee254016",
+      "name": "CHUM - Centre Hospitalier de l'Université de Montréal",
+      "address": "1051 Rue Sanguinet, Montréal, QC H2X 3E4",
+      "latitude": 45.5115,
+      "longitude": -73.5572,
+      "capacity": 200,
+      "created_at": "2026-02-12T13:03:38.412Z"
+    },
+    {
+      "id": "1af15bdc-ac49-4df3-b9c5-71945519ee1e",
+      "name": "Hôpital Sainte-Justine",
+      "address": "3175 Chemin de la Côte-Sainte-Catherine, Montréal, QC H3T 1C5",
+      "latitude": 45.5015,
+      "longitude": -73.6191,
+      "capacity": 120,
+      "created_at": "2026-02-12T13:03:38.413Z"
+    }
+  ],
+  "tickets": [
+    {
+      "id": "ab70990b-b577-4804-8577-7a5e33f412bd",
+      "patient_id": "f5ec8b6f-353e-4ae3-b43f-764e23fbb5e7",
+      "hospital_id": "7e874e50-fb11-4074-977a-8b76ee254016",
+      "priority_level": 2,
+      "validated_priority": null,
+      "pre_triage_answers": {
+        "pain_level": 8,
+        "breathing": true,
+        "symptom_duration": "under_1h"
+      },
+      "pre_triage_category": "chest_pain",
+      "status": "checked_in",
+      "queue_position": 1,
+      "estimated_wait_minutes": 25,
+      "qr_code": "data:image/png;base64,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",
+      "assigned_room": null,
+      "shared_token": "505dee54",
+      "created_at": "2026-02-12T13:15:55.648Z",
+      "updated_at": "2026-02-12T13:15:55.943Z"
+    }
+  ],
+  "triage_notes": [],
+  "doctor_notes": [],
+  "audit_log": [
+    {
+      "id": "65b25917-cd29-4157-9609-4910c34cdd7f",
+      "user_id": "f5ec8b6f-353e-4ae3-b43f-764e23fbb5e7",
+      "action": "login",
+      "details": "{\"email\":\"patient@test.ca\",\"role\":\"patient\"}",
+      "created_at": "2026-02-12T13:15:55.477Z"
+    },
+    {
+      "id": "0499b898-e79c-4ffb-aa4a-e490add61d03",
+      "user_id": "f5ec8b6f-353e-4ae3-b43f-764e23fbb5e7",
+      "action": "create_ticket",
+      "details": "{\"ticketId\":\"ab70990b-b577-4804-8577-7a5e33f412bd\",\"priority\":2,\"category\":\"chest_pain\"}",
+      "created_at": "2026-02-12T13:15:55.652Z"
+    },
+    {
+      "id": "72c6000f-8b76-4d9c-9f5b-705e6d2f1e9c",
+      "user_id": "da19850e-f802-4d64-8bab-0a9c9820bda8",
+      "action": "login",
+      "details": "{\"email\":\"nurse@allourgence.ca\",\"role\":\"nurse\"}",
+      "created_at": "2026-02-12T13:15:55.922Z"
+    }
+  ]
+}
