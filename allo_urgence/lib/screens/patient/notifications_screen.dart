@@ -85,12 +85,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: _notifications.length,
-                      itemBuilder: (context, index) {
-                        return _NotificationCard(notification: _notifications[index]);
-                      },
+                  : RefreshIndicator(
+                      onRefresh: _loadNotifications,
+                      color: AlloUrgenceTheme.primaryLight,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(20),
+                        itemCount: _notifications.length,
+                        itemBuilder: (context, index) {
+                          return _NotificationCard(notification: _notifications[index]);
+                        },
+                      ),
                     ),
     );
   }

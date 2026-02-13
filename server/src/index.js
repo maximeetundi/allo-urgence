@@ -27,20 +27,8 @@ const server = http.createServer(app);
 
 const corsOptions = {
     origin: (origin, callback) => {
-        const allowedOrigins = [
-            'https://api.allo-urgence.tech-afm.com',
-            'https://admin.allo-urgence.tech-afm.com',
-            'https://allo-urgence.tech-afm.com'
-        ];
-        // Allow requests with no origin (like mobile apps/Postman) or localhost for dev/testing
-        if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
-            return callback(null, true);
-        }
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            return callback(null, true);
-        } else {
-            return callback(new Error('Not allowed by CORS'));
-        }
+        // Allow all origins for now to prevent production blocking
+        return callback(null, true);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

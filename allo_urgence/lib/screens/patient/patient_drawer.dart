@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:line_icons/line_icons.dart';
-import '../../config/theme.dart';
+import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../config/theme.dart';
 import '../auth/login_screen.dart';
-import 'notifications_screen.dart';
+import 'settings_screen.dart';
+import 'package:line_icons/line_icons.dart';
 import 'pre_triage_screen.dart';
 
 class PatientDrawer extends StatelessWidget {
@@ -81,7 +82,10 @@ class PatientDrawer extends StatelessWidget {
             _PatientDrawerItem(icon: LineIcons.user, label: 'Profil', selected: selectedIndex == 2,
               onTap: () => onTabSelected(2)),
             _PatientDrawerItem(icon: Icons.settings_rounded, label: 'Paramètres',
-              onTap: () => Navigator.pop(context)),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+              }),
 
             const Spacer(),
             Divider(color: isDark ? AlloUrgenceTheme.darkDivider : AlloUrgenceTheme.divider),

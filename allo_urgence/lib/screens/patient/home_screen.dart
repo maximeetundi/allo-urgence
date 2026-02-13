@@ -7,7 +7,9 @@ import '../../config/theme.dart';
 import '../auth/login_screen.dart';
 import '../auth/email_verification_screen.dart';
 import 'pre_triage_screen.dart';
+import 'pre_triage_screen.dart';
 import 'ticket_screen.dart';
+import 'medical_profile_screen.dart';
 
 class PatientHomeScreen extends StatefulWidget {
   const PatientHomeScreen({super.key});
@@ -137,6 +139,32 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
               ),
 
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // Medical Info Reminder
+              SliverToBoxAdapter(
+                child: Consumer<AuthProvider>(
+                  builder: (context, auth, _) {
+                    final user = auth.user;
+                    if (user == null) return const SizedBox.shrink();
+                    
+                    final hasMedicalInfo = (user.allergies?.isNotEmpty == true) || 
+                                           (user.medicaments?.isNotEmpty == true) ||
+                                           (user.contactUrgence?.isNotEmpty == true);
+
+                    if (hasMedicalInfo) return const SizedBox.shrink();
+
+                    return FadeTransition(
+                      opacity: CurvedAnimation(parent: _animController, curve: const Interval(0.5, 0.9)),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                        child: _MedicalInfoReminder(),
+                      ),
+                    );
+                  },
+                ),
+              ),
 
               // Active ticket or Emergency Button (Wrapped in Consumer to isolate rebuilds)
               SliverToBoxAdapter(
@@ -409,6 +437,75 @@ class _HowItWorks extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MedicalInfoReminder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AlloUrgenceTheme.warning.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AlloUrgenceTheme.warning.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AlloUrgenceTheme.warning.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.info_outline, color: AlloUrgenceTheme.warning, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Profil médical incomplet',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ajoutez vos infos pour les urgences.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MedicalProfileScreen())),
+              style: TextButton.styleFrom(
+                foregroundColor: AlloUrgenceTheme.warning,
+                backgroundColor: AlloUrgenceTheme.warning.withOpacity(0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Compléter maintenant'),
             ),
           ),
         ],

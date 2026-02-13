@@ -5,6 +5,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../config/theme.dart';
 import '../auth/login_screen.dart';
+import 'settings_screen.dart';
+import 'medical_profile_screen.dart';
 
 class PatientProfileScreen extends StatelessWidget {
   const PatientProfileScreen({super.key});
@@ -79,41 +81,31 @@ class PatientProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 40),
 
-            // Settings Section
-            _SectionHeader(title: 'Paramètres'),
-            const SizedBox(height: 16),
-            _SettingsTile(
-              icon: LineIcons.moon,
-              title: 'Mode sombre',
-              trailing: const _ThemeSwitch(),
-            ),
-            
-            const SizedBox(height: 32),
+            const SizedBox(height: 40),
             
             // Account Section
             _SectionHeader(title: 'Compte'),
             const SizedBox(height: 16),
             _SettingsTile(
-              icon: LineIcons.alternateSignOut,
-              title: 'Se déconnecter',
-              textColor: AlloUrgenceTheme.error,
-              iconColor: AlloUrgenceTheme.error,
-              onTap: () async {
-                 await auth.logout();
-                 if (!context.mounted) return;
-                 Navigator.of(context).pushAndRemoveUntil(
-                   MaterialPageRoute(builder: (_) => const LoginScreen()),
-                   (_) => false,
-                 );
-              },
+              icon: LineIcons.medicalNotes,
+              title: 'Informations Médicales',
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MedicalProfileScreen())),
             ),
             const SizedBox(height: 12),
+             _SettingsTile(
+              icon: LineIcons.cog,
+              title: 'Paramètres',
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            ),
+            const SizedBox(height: 32),
+            
             Center(
               child: Text(
                 'Version 1.0.0',
                 style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textTertiary),
               ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -125,10 +117,6 @@ class PatientProfileScreen extends StatelessWidget {
     final prenomController = TextEditingController(text: user.prenom);
     final nomController = TextEditingController(text: user.nom);
     final telephoneController = TextEditingController(text: user.telephone);
-    final contactUrgenceController = TextEditingController(text: user.contactUrgence);
-    final allergiesController = TextEditingController(text: user.allergies);
-    final conditionsController = TextEditingController(text: user.conditionsMedicales);
-    final medicamentsController = TextEditingController(text: user.medicaments);
     
     // Simple state for loading inside the modal
     bool saving = false;
@@ -142,7 +130,7 @@ class PatientProfileScreen extends StatelessWidget {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           
           return Container(
-            height: MediaQuery.of(context).size.height * 0.85,
+            height: MediaQuery.of(context).size.height * 0.5, // Reduced height
             decoration: BoxDecoration(
               color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -165,13 +153,6 @@ class PatientProfileScreen extends StatelessWidget {
                       _EditField(label: 'Prénom', controller: prenomController),
                       _EditField(label: 'Nom', controller: nomController),
                       _EditField(label: 'Téléphone', controller: telephoneController, keyboardType: TextInputType.phone),
-                      const SizedBox(height: 16),
-                      Text('Informations Médicales (Optionnel)', style: TextStyle(fontWeight: FontWeight.bold, color: AlloUrgenceTheme.primaryLight, fontSize: 13)),
-                      const SizedBox(height: 8),
-                      _EditField(label: 'Contact d\'urgence', controller: contactUrgenceController),
-                      _EditField(label: 'Allergies', controller: allergiesController),
-                      _EditField(label: 'Conditions médicales', controller: conditionsController),
-                      _EditField(label: 'Médicaments', controller: medicamentsController),
                     ],
                   ),
                 ),
@@ -183,10 +164,11 @@ class PatientProfileScreen extends StatelessWidget {
                       prenom: prenomController.text,
                       nom: nomController.text,
                       telephone: telephoneController.text,
-                      contactUrgence: contactUrgenceController.text,
-                      allergies: allergiesController.text,
-                      conditionsMedicales: conditionsController.text,
-                      medicaments: medicamentsController.text,
+                      // Preserve existing medical info
+                      contactUrgence: user.contactUrgence,
+                      allergies: user.allergies,
+                      conditionsMedicales: user.conditionsMedicales,
+                      medicaments: user.medicaments,
                     );
                     if (context.mounted) {
                       setState(() => saving = false);

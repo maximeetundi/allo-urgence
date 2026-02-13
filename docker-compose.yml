@@ -23,13 +23,16 @@ services:
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_FROM_ADDRESS=${SMTP_FROM_ADDRESS}
+      - SMTP_FROM_ADDRESS=${SMTP_FROM_ADDRESS}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Allo Urgence Support}
+      - FRONTEND_URL=https://allo-urgence.tech-afm.com
     volumes:
       - backend-data:/app/data
     networks:
       - allo-urgence-network
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3355/api/health"]
       interval: 30s
