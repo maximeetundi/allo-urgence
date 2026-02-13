@@ -12,6 +12,7 @@ class User {
   final String? conditionsMedicales;
   final String? medicaments;
   final bool emailVerified;
+  final List<String> hospitalIds;
 
   User({
     required this.id,
@@ -27,6 +28,7 @@ class User {
     this.conditionsMedicales,
     this.medicaments,
     this.emailVerified = false,
+    this.hospitalIds = const [],
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -44,6 +46,9 @@ class User {
       conditionsMedicales: json['conditions_medicales'],
       medicaments: json['medicaments'],
       emailVerified: json['email_verified'] == true,
+      hospitalIds: json['hospital_ids'] != null
+          ? List<String>.from((json['hospital_ids'] as List).map((e) => e.toString()))
+          : [],
     );
   }
 
@@ -62,10 +67,13 @@ class User {
       'conditions_medicales': conditionsMedicales,
       'medicaments': medicaments,
       'email_verified': emailVerified,
+      'hospital_ids': hospitalIds,
     };
   }
 
   String get fullName => '$prenom $nom';
+  /// First assigned hospital ID, or null if none
+  String? get hospitalId => hospitalIds.isNotEmpty ? hospitalIds.first : null;
   bool get isPatient => role == 'patient';
   bool get isNurse => role == 'nurse';
   bool get isDoctor => role == 'doctor';

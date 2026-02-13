@@ -29,10 +29,29 @@ router.get('/patients', authenticateToken, requireRole(['nurse', 'admin']), asyn
         const params = [];
         let paramIndex = 1;
 
+        const userHospitalIds = req.user.hospital_ids || [];
+
+        // Determine effective hospital ID
+        let targetHospitalId = hospital_id;
+
+        // If hospital_id provided, verify access
+        if (targetHospitalId) {
+            if (!userHospitalIds.includes(targetHospitalId) && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Accès non autorisé à cet hôpital' });
+            }
+        } else {
+            // Default to first assigned hospital if available
+            if (userHospitalIds.length > 0) {
+                targetHospitalId = userHospitalIds[0];
+            } else if (req.user.role === 'admin') {
+                // Admin without specific hospital
+            }
+        }
+
         // Filter by hospital
-        if (hospital_id) {
+        if (targetHospitalId) {
             query += ` AND t.hospital_id = $${paramIndex}`;
-            params.push(hospital_id);
+            params.push(targetHospitalId);
             paramIndex++;
         }
 
@@ -43,7 +62,7 @@ router.get('/patients', authenticateToken, requireRole(['nurse', 'admin']), asyn
             paramIndex++;
         } else {
             // Par défaut, exclure les tickets terminés
-            query += ` AND t.status NOT IN ('completed', 'cancelled')`;
+            query += ` AND t.status NOT IN ('treated', 'completed', 'cancelled')`;
         }
 
         // Filter by priority
@@ -73,11 +92,16 @@ router.get('/patients', authenticateToken, requireRole(['nurse', 'admin']), asyn
       WHERE hospital_id = $1 AND status NOT IN ('completed', 'cancelled')
     `;
 
-        const statsResult = await db.query(statsQuery, [hospital_id || req.user.hospital_id]);
+        // Only run stats if we have a target hospital
+        let stats = {};
+        if (targetHospitalId) {
+            const statsResult = await db.query(statsQuery, [targetHospitalId]);
+            stats = statsResult.rows[0];
+        }
 
         res.json({
             patients: result.rows,
-            stats: statsResult.rows[0],
+            stats: stats,
             total: result.rows.length,
         });
     } catch (error) {

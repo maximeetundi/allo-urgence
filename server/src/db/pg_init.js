@@ -156,6 +156,15 @@ async function initDatabase() {
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS priority_level INTEGER DEFAULT 5`);
 
     // ── Fix missing columns from initial schema drift ────────────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS hospital_staff (
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        hospital_id UUID REFERENCES hospitals(id) ON DELETE CASCADE,
+        PRIMARY KEY (user_id, hospital_id),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS pre_triage_category VARCHAR(100)`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS patient_nom VARCHAR(100)`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS patient_prenom VARCHAR(100)`);

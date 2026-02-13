@@ -31,10 +31,29 @@ router.get('/patients', authenticateToken, requireRole(['doctor', 'admin']), asy
         const params = [];
         let paramIndex = 1;
 
+        const userHospitalIds = req.user.hospital_ids || [];
+
+        let targetHospitalId = hospital_id;
+
+        // If hospital_id provided, verify access
+        if (targetHospitalId) {
+            if (!userHospitalIds.includes(targetHospitalId) && req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Accès non autorisé à cet hôpital' });
+            }
+        }
+        // Note: For doctors, if no hospital is selected, we usually want to show patients from ALL their assigned hospitals
+        // But the previous code was expecting a single hospital filter possibly?
+        // Let's support filtering by list of IDs if no specific ID is provided
+
         // Filter by hospital
-        if (hospital_id) {
+        if (targetHospitalId) {
             query += ` AND t.hospital_id = $${paramIndex}`;
-            params.push(hospital_id);
+            params.push(targetHospitalId);
+            paramIndex++;
+        } else if (userHospitalIds.length > 0 && req.user.role !== 'admin') {
+            // Show tickets from ANY of the assigned hospitals
+            query += ` AND t.hospital_id = ANY($${paramIndex})`;
+            params.push(userHospitalIds);
             paramIndex++;
         }
 
@@ -44,8 +63,8 @@ router.get('/patients', authenticateToken, requireRole(['doctor', 'admin']), asy
             params.push(status);
             paramIndex++;
         } else {
-            // Par défaut, montrer seulement en attente et en cours
-            query += ` AND t.status IN ('waiting', 'in_progress')`;
+            // Par défaut, montrer tous les tickets actifs (non terminés/traités)
+            query += ` AND t.status NOT IN ('treated', 'completed', 'cancelled')`;
         }
 
         // Tri automatique: Priorité > Temps d'attente
@@ -74,7 +93,7 @@ router.get('/patient/:id', authenticateToken, requireRole(['doctor', 'admin']), 
       SELECT 
         t.*,
         u.nom, u.prenom, u.date_naissance, u.telephone, u.email,
-        u.ramq, u.address,
+        u.ramq_number, u.allergies, u.conditions_medicales,
         EXTRACT(YEAR FROM AGE(u.date_naissance)) as age,
         h.name as hospital_name
       FROM tickets t
@@ -132,7 +151,7 @@ router.post('/patient/:id/status', authenticateToken, requireRole(['doctor', 'ad
         const { id } = req.params;
         const { status } = req.body;
 
-        const validStatuses = ['waiting', 'in_progress', 'completed', 'cancelled'];
+        const validStatuses = ['waiting', 'in_progress', 'treated', 'completed', 'cancelled'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ error: 'Statut invalide' });
         }

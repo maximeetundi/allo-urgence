@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getUsers, createUser, updateUser, deleteUser } from '@/lib/api';
+import { getUsers, createUser, updateUser, deleteUser, getHospitals } from '@/lib/api';
 import {
   Plus, Trash2, Edit2, Search, X, UserPlus,
   Shield, Stethoscope, Heart, Users as UsersIcon,
@@ -14,6 +14,7 @@ interface User {
   prenom: string;
   role: string;
   telephone?: string;
+  hospital_ids?: string[];
   created_at: string;
 }
 
@@ -32,18 +33,23 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [newUser, setNewUser] = useState({
-    email: '', password: '', nom: '', prenom: '', role: 'nurse', telephone: '',
+  const [newUser, setNewUser] = useState<{
+    email: string; password: string; nom: string; prenom: string; role: string; telephone: string; hospital_ids?: string[]
+  }>({
+    email: '', password: '', nom: '', prenom: '', role: 'nurse', telephone: '', hospital_ids: []
   });
 
-  useEffect(() => { loadUsers(); }, []);
+  const [hospitals, setHospitals] = useState<any[]>([]);
 
-  const loadUsers = async () => {
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
     try {
-      const data = await getUsers();
-      setUsers(Array.isArray(data) ? data : []);
+      const [usersData, hospitalsData] = await Promise.all([getUsers(), getHospitals()]);
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setHospitals(Array.isArray(hospitalsData) ? hospitalsData : []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
@@ -62,8 +68,8 @@ export default function UsersPage() {
       }
       setShowModal(false);
       setEditingUser(null);
-      setNewUser({ email: '', password: '', nom: '', prenom: '', role: 'nurse', telephone: '' });
-      loadUsers();
+      setNewUser({ email: '', password: '', nom: '', prenom: '', role: 'nurse', telephone: '', hospital_ids: [] });
+      loadData();
     } catch (error: any) {
       alert(error.message || 'Erreur lors de la sauvegarde');
     } finally {
@@ -80,13 +86,14 @@ export default function UsersPage() {
       prenom: user.prenom || '',
       role: user.role,
       telephone: user.telephone || '',
+      hospital_ids: user.hospital_ids || [],
     });
     setShowModal(true);
   };
 
   const openCreate = () => {
     setEditingUser(null);
-    setNewUser({ email: '', password: '', nom: '', prenom: '', role: 'nurse', telephone: '' });
+    setNewUser({ email: '', password: '', nom: '', prenom: '', role: 'nurse', telephone: '', hospital_ids: [] });
     setShowModal(true);
   };
 
@@ -94,7 +101,8 @@ export default function UsersPage() {
     if (!confirm(`Supprimer l'utilisateur ${name} ?`)) return;
     try {
       await deleteUser(id);
-      loadUsers();
+      await deleteUser(id);
+      loadData();
     } catch (error: any) {
       alert(error.message || 'Erreur lors de la suppression');
     }
@@ -287,8 +295,35 @@ export default function UsersPage() {
                   <option value="nurse">Infirmier(ère)</option>
                   <option value="doctor">Médecin</option>
                   <option value="admin">Administrateur</option>
+                  <option value="patient">Patient</option>
                 </select>
               </div>
+
+              {(newUser.role === 'nurse' || newUser.role === 'doctor') && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5 ml-0.5">Hôpitaux assignés</label>
+                  <div className="border border-gray-100 rounded-xl p-2 max-h-32 overflow-y-auto bg-gray-50/50">
+                    {hospitals.map(hospital => (
+                      <label key={hospital.id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded-lg cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={(newUser.hospital_ids || []).includes(hospital.id)}
+                          onChange={e => {
+                            const current = newUser.hospital_ids || [];
+                            const newIds = e.target.checked
+                              ? [...current, hospital.id]
+                              : current.filter(id => id !== hospital.id);
+                            setNewUser({ ...newUser, hospital_ids: newIds });
+                          }}
+                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700">{hospital.name}</span>
+                      </label>
+                    ))}
+                    {hospitals.length === 0 && <p className="text-xs text-gray-400 p-1">Aucun hôpital disponible</p>}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5 ml-0.5">Téléphone</label>

@@ -244,7 +244,11 @@ router.patch('/:id/treat', authenticateToken, requireRole('doctor', 'admin'), as
         const ticket = await db.findById('tickets', req.params.id);
         if (!ticket) return res.status(404).json({ error: 'Ticket non trouvé' });
 
-        const updated = await db.update('tickets', ticket.id, { status: 'treated' });
+        const updated = await db.update('tickets', ticket.id, {
+            status: 'treated',
+            treated_by: req.user.id,
+            treated_at: new Date().toISOString()
+        });
 
         if (notes || diagnosis) {
             await db.insert('doctor_notes', {

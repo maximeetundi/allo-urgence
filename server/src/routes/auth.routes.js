@@ -230,26 +230,41 @@ router.post('/login', authLoginLimiter, validate(loginSchema), async (req, res, 
             }
         }
 
+        // Fetch assigned hospitals
+        const hospitalResult = await db.query(
+            `SELECT hospital_id FROM hospital_staff WHERE user_id = $1`,
+            [user.id]
+        );
+        const hospitalIds = hospitalResult.rows.map(r => r.hospital_id);
+
         const token = jwt.sign(
-            { id: user.id, role: user.role, email: user.email },
+            { id: user.id, role: user.role, email: user.email, hospital_ids: hospitalIds },
             JWT_SECRET,
             { expiresIn: '7d' },
         );
 
         const { password_hash: _, verification_code: __, verification_expires_at: ___, ...safeUser } = user;
-        res.json({ token, user: safeUser });
+        res.json({ token, user: { ...safeUser, hospital_ids: hospitalIds } });
     } catch (err) {
         next(err);
     }
 });
 
 // ── GET /api/auth/me ────────────────────────────────────────────
-router.get('/me', authenticateToken, async (req, res) => {
+router.get('/me', authenticateToken, async (req, res, next) => {
     try {
         const user = await db.findById('users', req.user.id);
         if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        // Fetch assigned hospitals (same as login)
+        const hospitalResult = await db.query(
+            `SELECT hospital_id FROM hospital_staff WHERE user_id = $1`,
+            [user.id]
+        );
+        const hospitalIds = hospitalResult.rows.map(r => r.hospital_id);
+
         const { password_hash: _, verification_code: __, verification_expires_at: ___, ...safeUser } = user;
-        res.json(safeUser);
+        res.json({ ...safeUser, hospital_ids: hospitalIds });
     } catch (err) {
         next(err);
     }

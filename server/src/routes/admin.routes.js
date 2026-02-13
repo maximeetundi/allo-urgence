@@ -43,9 +43,15 @@ router.get('/stats', authenticateToken, requireRole('admin'), async (req, res) =
 // ── GET /api/admin/users ────────────────────────────────────────
 router.get('/users', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
-    const result = await db.query(
-      `SELECT id, role, email, nom, prenom, telephone, created_at FROM users ORDER BY created_at DESC`,
-    );
+    const query = `
+      SELECT u.id, u.role, u.email, u.nom, u.prenom, u.telephone, u.created_at,
+             COALESCE(json_agg(hs.hospital_id) FILTER (WHERE hs.hospital_id IS NOT NULL), '[]') as hospital_ids
+      FROM users u
+      LEFT JOIN hospital_staff hs ON u.id = hs.user_id
+        GROUP BY u.id
+      ORDER BY u.created_at DESC
+    `;
+    const result = await db.query(query);
     res.json({ users: result.rows });
   } catch (err) {
     console.error('Admin users error:', err.message);
@@ -53,10 +59,30 @@ router.get('/users', authenticateToken, requireRole('admin'), async (req, res) =
   }
 });
 
+// ── GET /api/admin/users/:id ────────────────────────────────────
+router.get('/users/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const query = `
+            SELECT u.id, u.role, u.email, u.nom, u.prenom, u.telephone, u.created_at,
+                   COALESCE(json_agg(hs.hospital_id) FILTER (WHERE hs.hospital_id IS NOT NULL), '[]') as hospital_ids
+            FROM users u
+            LEFT JOIN hospital_staff hs ON u.id = hs.user_id
+            WHERE u.id = $1
+            GROUP BY u.id
+        `;
+    const result = await db.query(query, [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Admin get user error:', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ── POST /api/admin/users ───────────────────────────────────────
 router.post('/users', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
-    const { email, password, nom, prenom, role, telephone } = req.body;
+    const { email, password, nom, prenom, role, telephone, hospital_ids } = req.body;
     if (!email || !password || !nom || !prenom || !role) {
       return res.status(400).json({ error: 'Champs obligatoires manquants' });
     }
@@ -67,13 +93,71 @@ router.post('/users', authenticateToken, requireRole('admin'), async (req, res) 
     const password_hash = bcrypt.hashSync(password, 10);
     const user = await db.insert('users', {
       role, email, password_hash, nom, prenom, telephone: telephone || null,
+      email_verified: true // Admin created users are verified
     });
+
+    if (Array.isArray(hospital_ids) && hospital_ids.length > 0) {
+      for (const hospitalId of hospital_ids) {
+        await db.query('INSERT INTO hospital_staff (user_id, hospital_id) VALUES ($1, $2)', [user.id, hospitalId]);
+      }
+    }
 
     auditLog('user_created', req.user.id, { newUserId: user.id, role });
     const { password_hash: _, ...safeUser } = user;
-    res.status(201).json(safeUser);
+    res.status(201).json({ ...safeUser, hospital_ids: hospital_ids || [] });
   } catch (err) {
     console.error('Admin create user error:', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ── PATCH /api/admin/users/:id ──────────────────────────────────
+router.patch('/users/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { email, password, nom, prenom, role, telephone, hospital_ids } = req.body;
+    const updates = {};
+    if (email) updates.email = email;
+    if (nom) updates.nom = nom;
+    if (prenom) updates.prenom = prenom;
+    if (role) updates.role = role;
+    if (telephone !== undefined) updates.telephone = telephone;
+    if (password) updates.password_hash = bcrypt.hashSync(password, 10);
+
+    // Update user fields
+    let updatedUser = null;
+    if (Object.keys(updates).length > 0) {
+      updatedUser = await db.update('users', req.params.id, updates);
+    } else {
+      updatedUser = await db.findById('users', req.params.id);
+    }
+
+    if (!updatedUser) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+    // Update hospitals if provided
+    if (Array.isArray(hospital_ids)) {
+      // Transaction-like approach (delete all and re-insert)
+      await db.query('DELETE FROM hospital_staff WHERE user_id = $1', [req.params.id]);
+      for (const hospitalId of hospital_ids) {
+        await db.query('INSERT INTO hospital_staff (user_id, hospital_id) VALUES ($1, $2)', [req.params.id, hospitalId]);
+      }
+    }
+
+    auditLog('user_updated', req.user.id, { userId: req.params.id, updates });
+
+    // Return full user with hospitals
+    const fullUser = await db.query(`
+            SELECT u.id, u.role, u.email, u.nom, u.prenom, u.telephone, u.created_at,
+                   COALESCE(json_agg(hs.hospital_id) FILTER (WHERE hs.hospital_id IS NOT NULL), '[]') as hospital_ids
+            FROM users u
+            LEFT JOIN hospital_staff hs ON u.id = hs.user_id
+            WHERE u.id = $1
+            GROUP BY u.id
+        `, [req.params.id]);
+
+    res.json(fullUser.rows[0]);
+
+  } catch (err) {
+    console.error('Admin update user error:', err.message);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
