@@ -178,7 +178,6 @@ async function initDatabase() {
     // Index for faster queries
     await db.query(`
       CREATE INDEX IF NOT EXISTS idx_verification_attempts_user_time 
-      CREATE INDEX IF NOT EXISTS idx_verification_attempts_user_time 
       ON verification_attempts(user_id, created_at DESC)
     `);
 
