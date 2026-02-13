@@ -6,6 +6,7 @@ import '../auth/login_screen.dart';
 import 'settings_screen.dart';
 import 'package:line_icons/line_icons.dart';
 import 'pre_triage_screen.dart';
+import 'notifications_screen.dart';
 
 class PatientDrawer extends StatelessWidget {
   final AuthProvider auth;
