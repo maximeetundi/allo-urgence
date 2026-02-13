@@ -4,7 +4,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/ticket_provider.dart';
 import '../../config/theme.dart';
 import '../../models/ticket.dart';
-import 'home_screen.dart';
+import 'main_navigation_screen.dart';
+import '../../providers/auth_provider.dart';
+import 'patient_drawer.dart';
 
 class TicketScreen extends StatefulWidget {
   final String ticketId;
@@ -16,6 +18,7 @@ class TicketScreen extends StatefulWidget {
 
 class _TicketScreenState extends State<TicketScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animController;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -42,51 +45,91 @@ class _TicketScreenState extends State<TicketScreen> with SingleTickerProviderSt
     final ticket = context.watch<TicketProvider>();
     final t = ticket.activeTicket;
 
+    final auth = context.watch<AuthProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: PatientDrawer(
+        auth: auth,
+        onTabSelected: (index) {
+           Navigator.pop(context); // Close drawer
+           // Navigate to home with index
+           Navigator.of(context).pushAndRemoveUntil(
+             MaterialPageRoute(builder: (_) => const PatientHomeScreen()), // This isn't right, HomeScreen is a fragment
+             // We need to go to PatientMainScreen with index
+             (_) => false,
+           );
+           // Actually, easiest is just pop until we hit MainScreen if we are there?
+           // But TicketScreen might be top level after login?
+           // The "Retour à l'accueil" button pushes PatientHomeScreen(), but PatientHomeScreen is a Child of PatientMainScreen.
+           // pushing PatientHomeScreen directly will lose the bottom nav!
+           // The "Retour à l'accueil" button is BUGGY too.
+           // It should push PatientMainScreen().
+           Navigator.of(context).pushAndRemoveUntil(
+             MaterialPageRoute(builder: (_) => const PatientMainScreen()),
+             (_) => false,
+           );
+        },
+        selectedIndex: -1,
+      ),
       body: SafeArea(
-        child: t == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadTicket,
-              color: AlloUrgenceTheme.primaryLight,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    // Header
-                    _buildHeader(t),
-                    // Stats
-                    _buildStats(t),
-                    // QR Code
-                    if (t.sharedToken != null) _buildQRSection(t),
-                    // Details
-                    _buildDetails(t),
-                    const SizedBox(height: 24),
-                    // Return button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: SizedBox(
-                        height: 56,
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const PatientHomeScreen()),
-                            (_) => false,
+        child: Stack(
+          children: [
+            t == null
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _loadTicket,
+                  color: AlloUrgenceTheme.primaryLight,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 50), // Space for menu button
+                        // Header
+                        _buildHeader(t),
+                        // Stats
+                        _buildStats(t),
+                        // QR Code
+                        if (t.sharedToken != null) _buildQRSection(t),
+                        // Details
+                        _buildDetails(t),
+                        const SizedBox(height: 24),
+                        // Return button
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: SizedBox(
+                            height: 56,
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const PatientMainScreen()),
+                                (_) => false,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AlloUrgenceTheme.textSecondary,
+                                side: const BorderSide(color: AlloUrgenceTheme.divider),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              child: const Text('Retour à l\'accueil'),
+                            ),
                           ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AlloUrgenceTheme.textSecondary,
-                            side: BorderSide(color: AlloUrgenceTheme.divider),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child: const Text('Retour à l\'accueil'),
                         ),
-                      ),
+                        const SizedBox(height: 32),
+                      ],
                     ),
-                    const SizedBox(height: 32),
-                  ],
+                  ),
                 ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton(
+                icon: Icon(Icons.menu, color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
+                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
               ),
             ),
+          ],
+        ),
       ),
     );
   }

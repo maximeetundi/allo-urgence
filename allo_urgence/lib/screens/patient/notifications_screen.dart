@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:line_icons/line_icons.dart';
 import '../../config/theme.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import 'patient_drawer.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -44,6 +47,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final auth = context.watch<AuthProvider>();
+
     return Scaffold(
       backgroundColor: isDark ? AlloUrgenceTheme.darkBackground : AlloUrgenceTheme.background,
       appBar: AppBar(
@@ -53,6 +58,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           icon: const Icon(Icons.menu),
           onPressed: () => Scaffold.of(context).openDrawer(),
         ),
+      ),
+      drawer: PatientDrawer(
+        auth: auth,
+        onTabSelected: (index) {
+          Navigator.pop(context); // Close drawer
+          Navigator.pop(context, index); // Return to main screen with selected tab index
+        },
+        selectedIndex: -1, // No tab selected in notifications
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

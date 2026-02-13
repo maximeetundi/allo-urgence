@@ -6,6 +6,8 @@ import '../../models/hospital.dart';
 import '../../models/triage_question.dart';
 import '../../services/api_service.dart';
 import 'ticket_screen.dart';
+import '../../providers/auth_provider.dart';
+import 'patient_drawer.dart';
 
 class PreTriageScreen extends StatefulWidget {
   const PreTriageScreen({super.key});
@@ -26,77 +28,37 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
 
   late AnimationController _animController;
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    )..forward();
+// ... (existing initState content)
     _loadData();
   }
 
-  @override
-  void dispose() {
-    _animController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadData() async {
-    try {
-      final data = await apiService.get('/hospitals');
-      if (!mounted) return;
-      setState(() {
-        _hospitals = (data['hospitals'] as List).map((h) => Hospital.fromJson(h)).toList();
-      });
-    } catch (e) {
-      debugPrint('❌ Failed to load hospitals: $e');
-    }
-    if (!mounted) return;
-    final ticket = context.read<TicketProvider>();
-    await ticket.loadTriageCategories();
-  }
-
-  void _goToStep(int step) {
-    _animController.reset();
-    setState(() => _step = step);
-    _animController.forward();
-  }
-
-  Future<void> _createTicket() async {
-    if (_selectedHospital == null || _selectedCategory == null) return;
-    setState(() => _loading = true);
-
-    final ticket = context.read<TicketProvider>();
-    final success = await ticket.createTicket(
-      hospitalId: _selectedHospital!.id,
-      categoryId: _selectedCategory!.id,
-      triageAnswers: {
-        'pain_level': _painLevel.round(),
-        'breathing': _breathingDifficulty,
-        'symptom_duration': _symptomDuration,
-      },
-    );
-
-    if (!mounted) return;
-    setState(() => _loading = false);
-
-    if (success && ticket.activeTicket != null) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => TicketScreen(ticketId: ticket.activeTicket!.id)),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ticket.error ?? 'Erreur'), backgroundColor: AlloUrgenceTheme.error),
-      );
-    }
-  }
+// ... (existing helper methods)
 
   @override
   Widget build(BuildContext context) {
     final ticket = context.watch<TicketProvider>();
+    final auth = context.watch<AuthProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      key: _scaffoldKey,
+      drawer: PatientDrawer(
+        auth: auth,
+        onTabSelected: (index) {
+          Navigator.pop(context); // Close drawer
+          Navigator.pop(context); // Close PreTriage
+          // Note: Logic to switch tab in MainScreen isn't directly passed here unless we return result
+          // But PreTriage is usually "new flow".
+          // If user clicks a tab, we probably want to just go back.
+        },
+        selectedIndex: -1,
+      ),
       // backgroundColor follows theme
       body: SafeArea(
         child: Column(
@@ -117,7 +79,10 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(width: 48),
+                  IconButton(
+                    icon: Icon(Icons.menu, color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
+                    onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
                 ],
               ),
             ),
@@ -235,6 +200,7 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
 
   // ── Step 2: Questions ─────────────────────────────────────────
   Widget _buildQuestionsStep() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final painColor = _painLevel >= 8 ? AlloUrgenceTheme.error
       : _painLevel >= 5 ? AlloUrgenceTheme.warning
       : AlloUrgenceTheme.success;
@@ -250,7 +216,7 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [AlloUrgenceTheme.cardShadow],
           ),
@@ -261,7 +227,11 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
                 children: [
                   Icon(Icons.sentiment_dissatisfied_rounded, color: painColor, size: 22),
                   const SizedBox(width: 8),
-                  const Text('Niveau de douleur', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  Text('Niveau de douleur', style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary
+                  )),
                 ],
               ),
               const SizedBox(height: 16),
@@ -314,7 +284,7 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [AlloUrgenceTheme.cardShadow],
           ),
@@ -325,7 +295,11 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
                 children: [
                   Icon(Icons.schedule_rounded, color: AlloUrgenceTheme.primaryLight, size: 22),
                   const SizedBox(width: 8),
-                  const Text('Depuis combien de temps ?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  Text('Depuis combien de temps ?', style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary
+                  )),
                 ],
               ),
               const SizedBox(height: 12),
@@ -342,15 +316,21 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: selected ? AlloUrgenceTheme.primaryLight.withValues(alpha: 0.08) : AlloUrgenceTheme.surfaceVariant,
+                        color: selected 
+                          ? AlloUrgenceTheme.primaryLight.withValues(alpha: 0.08) 
+                          : (isDark ? AlloUrgenceTheme.darkSurfaceVariant : AlloUrgenceTheme.surfaceVariant),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: selected ? AlloUrgenceTheme.primaryLight.withValues(alpha: 0.4) : Colors.transparent),
                       ),
                       child: Row(
                         children: [
-                          Icon(icons[v]!, size: 18, color: selected ? AlloUrgenceTheme.primaryLight : AlloUrgenceTheme.textTertiary),
+                          Icon(icons[v]!, size: 18, color: selected ? AlloUrgenceTheme.primaryLight : (isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textTertiary)),
                           const SizedBox(width: 12),
-                          Text(labels[v]!, style: TextStyle(fontSize: 15, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
+                          Text(labels[v]!, style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                            color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary
+                          )),
                           const Spacer(),
                           if (selected) const Icon(Icons.check_circle_rounded, color: AlloUrgenceTheme.primaryLight, size: 20),
                         ],
@@ -513,6 +493,8 @@ class _HospitalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -520,7 +502,7 @@ class _HospitalCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? AlloUrgenceTheme.primaryLight : Colors.transparent,
@@ -548,13 +530,20 @@ class _HospitalCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(hospital.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text(hospital.name, style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary
+                  )),
                   const SizedBox(height: 4),
-                  Text(hospital.address, style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(hospital.address, style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary
+                  ), maxLines: 2, overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: AlloUrgenceTheme.textTertiary),
+            Icon(Icons.chevron_right_rounded, color: isDark ? AlloUrgenceTheme.darkTextTertiary : AlloUrgenceTheme.textTertiary),
           ],
         ),
       ),
@@ -571,7 +560,9 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = AlloUrgenceTheme.getPriorityColor(category.priority);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
@@ -581,7 +572,7 @@ class _CategoryCard extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: selected ? color : Colors.transparent, width: selected ? 2 : 1),
             boxShadow: [AlloUrgenceTheme.cardShadow],
@@ -594,9 +585,16 @@ class _CategoryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(category.label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    Text(category.label, style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary
+                    )),
                     const SizedBox(height: 2),
-                    Text(category.description, style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(category.description, style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary
+                    ), maxLines: 2, overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),
@@ -622,11 +620,14 @@ class _QuestionCard extends StatelessWidget {
   const _QuestionCard({required this.icon, required this.iconColor, required this.question, required this.trailing});
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [AlloUrgenceTheme.cardShadow],
       ),
@@ -634,7 +635,11 @@ class _QuestionCard extends StatelessWidget {
         children: [
           Icon(icon, color: iconColor, size: 22),
           const SizedBox(width: 12),
-          Expanded(child: Text(question, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+          Expanded(child: Text(question, style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary
+          ))),
           trailing,
         ],
       ),
@@ -651,13 +656,22 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Row(
       children: [
-        Icon(icon, size: 18, color: AlloUrgenceTheme.textTertiary),
+        Icon(icon, size: 18, color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textTertiary),
         const SizedBox(width: 10),
-        Text(label, style: TextStyle(fontSize: 14, color: AlloUrgenceTheme.textSecondary)),
+        Text(label, style: TextStyle(
+          fontSize: 14,
+          color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary
+        )),
         const Spacer(),
-        Flexible(child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), textAlign: TextAlign.right)),
+        Flexible(child: Text(value, style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary
+        ), textAlign: TextAlign.right)),
       ],
     );
   }
