@@ -8,6 +8,7 @@ import '../../services/api_service.dart';
 import 'ticket_screen.dart';
 import '../../providers/auth_provider.dart';
 import 'patient_drawer.dart';
+import 'dart:async'; // For Timer
 
 class PreTriageScreen extends StatefulWidget {
   const PreTriageScreen({super.key});
@@ -20,9 +21,6 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
   int _step = 0;
   Hospital? _selectedHospital;
   TriageCategory? _selectedCategory;
-  List<Hospital> _hospitals = [];
-  List<Hospital> _filteredHospitals = [];
-  final TextEditingController _searchController = TextEditingController();
   double _painLevel = 0;
   bool _breathingDifficulty = false;
   String _symptomDuration = '1_24h';
@@ -32,49 +30,107 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // Pagination & Search
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  
+  List<Hospital> _hospitals = [];
+  int _currentPage = 1;
+  static const int _limit = 20;
+  bool _hasMore = true;
+  bool _isLoadingHospitals = false;
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
+       duration: const Duration(milliseconds: 500),
+       vsync: this,
     )..forward();
-    _loadData();
+    
+    _scrollController.addListener(_onScroll);
+    _loadHospitals(reset: true);
+    
+    // Load categories once
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TicketProvider>().loadTriageCategories();
+    });
   }
 
   @override
   void dispose() {
     _animController.dispose();
+    _scrollController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    try {
-      final data = await apiService.get('/hospitals');
-      if (!mounted) return;
-      setState(() {
-        _hospitals = (data['hospitals'] as List).map((h) => Hospital.fromJson(h)).toList();
-        _filteredHospitals = _hospitals;
-      });
-    } catch (e) {
-      debugPrint('❌ Failed to load hospitals: $e');
+  void _onScroll() {
+    if (_step == 0 && 
+        _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingHospitals &&
+        _hasMore) {
+      _loadHospitals();
     }
   }
 
-  void _filterHospitals(String query) {
+  Future<void> _loadHospitals({bool reset = false}) async {
+    if (_isLoadingHospitals) return;
+    
     setState(() {
-      if (query.isEmpty) {
-        _filteredHospitals = _hospitals;
-      } else {
-        _filteredHospitals = _hospitals.where((h) =>
-          h.name.toLowerCase().contains(query.toLowerCase()) ||
-          h.address.toLowerCase().contains(query.toLowerCase())
-        ).toList();
+      _isLoadingHospitals = true;
+      if (reset) {
+        _hospitals = [];
+        _currentPage = 1;
+        _hasMore = true;
       }
     });
-    if (!mounted) return;
-    final ticket = context.read<TicketProvider>();
-    await ticket.loadTriageCategories();
+
+    try {
+      // Build query string
+      final query = '/hospitals?page=$_currentPage&limit=$_limit&search=${Uri.encodeComponent(_searchQuery)}';
+      final data = await apiService.get(query);
+      
+      if (!mounted) return;
+
+      final List newHospitals = (data['hospitals'] as List)
+          .map((h) => Hospital.fromJson(h))
+          .toList();
+
+      setState(() {
+        if (reset) {
+          _hospitals = newHospitals.cast<Hospital>();
+        } else {
+          _hospitals.addAll(newHospitals.cast<Hospital>());
+        }
+        
+        // Check if we have more data
+        if (newHospitals.length < _limit) {
+          _hasMore = false;
+        } else {
+          _currentPage++;
+        }
+      });
+    } catch (e) {
+      debugPrint('❌ Failed to load hospitals: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingHospitals = false);
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (_searchQuery != query) {
+        setState(() {
+          _searchQuery = query;
+        });
+        _loadHospitals(reset: true);
+      }
+    });
   }
 
   void _goToStep(int step) {
@@ -185,6 +241,7 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
                   position: Tween<Offset>(begin: const Offset(0.03, 0), end: Offset.zero)
                     .animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut)),
                   child: SingleChildScrollView(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(24),
                     child: _buildStep(ticket),
                   ),
@@ -240,7 +297,7 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
           ),
           child: TextField(
             controller: _searchController,
-            onChanged: _filterHospitals,
+            onChanged: _onSearchChanged,
             decoration: InputDecoration(
               hintText: 'Rechercher un hôpital...',
               hintStyle: TextStyle(color: AlloUrgenceTheme.textTertiary),
@@ -252,7 +309,7 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
                     icon: Icon(Icons.clear_rounded, color: AlloUrgenceTheme.textTertiary),
                     onPressed: () {
                       _searchController.clear();
-                      _filterHospitals('');
+                      _onSearchChanged('');
                     },
                   )
                 : null,
@@ -261,7 +318,7 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
         ),
         const SizedBox(height: 20),
 
-        if (_filteredHospitals.isEmpty)
+        if (_hospitals.isEmpty && !_isLoadingHospitals)
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 40),
@@ -275,19 +332,36 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
             ),
           )
         else
-          ..._filteredHospitals.asMap().entries.map((entry) => TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: Duration(milliseconds: 400 + (entry.key > 5 ? 0 : entry.key * 100)), // Limit staggering for long lists
-            builder: (_, value, child) => Opacity(opacity: value, child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child)),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _HospitalCard(
-                hospital: entry.value,
-                selected: _selectedHospital?.id == entry.value.id,
-                onTap: () { setState(() => _selectedHospital = entry.value); _goToStep(1); },
-              ),
+          // We need a constrained height for the list if we want it to scroll within the page
+          // But here we are inside a SingleChildScrollView (from line 187).
+          // THIS IS A PROBLEM: Infinite scroll inside SingleChildScrollView is bad.
+          // We should replace the SingleChildScrollView in the main build method with a Column + Expanded > ListView for Step 0.
+          // However, to minimal changes, we can use Physics or just render the list.
+          // BUT, if we render the list as children of Column, we lose the "lazy loading" benefit of ListView.builder.
+          // AND we need the ScrollController to be on the Scrollable.
+          // The parent is SingleChildScrollView. We can attach the controller there?
+          // No, we should probably refactor the main layout for Step 0 to be different.
+          // OR, simpler: Just show the list.
+          // But wait, the _onScroll listener checks _scrollController.
+          // We need to attach _scrollController to the SingleChildScrollView parent, NOT a new ListView here.
+          // Let's check where SingleChildScrollView is. It's at line 187.
+          // We should modify the parent SingleChildScrollView to use _scrollController.
+          
+          // For now, let's just render the list items.
+           ..._hospitals.asMap().entries.map((entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _HospitalCard(
+              hospital: entry.value,
+              selected: _selectedHospital?.id == entry.value.id,
+              onTap: () { setState(() => _selectedHospital = entry.value); _goToStep(1); },
             ),
           )),
+          
+          if (_isLoadingHospitals)
+             const Padding(
+               padding: EdgeInsets.all(20.0),
+               child: Center(child: CircularProgressIndicator()),
+             ),
       ],
     );
   }

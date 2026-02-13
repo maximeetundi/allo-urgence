@@ -3,11 +3,26 @@ const router = express.Router();
 const db = require('../db/pg_connection');
 const { authenticateToken } = require('../middleware/auth');
 
-// ── GET /api/hospitals — list all hospitals ─────────────────────
+// ── GET /api/hospitals — list all hospitals (Paginated & Search) ─────────────────────
 router.get('/', async (req, res) => {
   try {
-    const hospitals = await db.findMany('hospitals', null, 'name ASC');
-    res.json({ hospitals });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+    const orderBy = req.query.orderBy || 'name ASC';
+
+    const result = await db.findWithPagination('hospitals', {
+      page,
+      limit,
+      search,
+      searchColumns: ['name', 'address'],
+      orderBy
+    });
+
+    res.json({
+      hospitals: result.data,
+      meta: result.meta
+    });
   } catch (err) {
     console.error('Hospitals list error:', err.message);
     res.status(500).json({ error: 'Erreur serveur' });
