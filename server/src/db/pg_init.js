@@ -165,7 +165,9 @@ async function initDatabase() {
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS date_naissance DATE`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS qr_code TEXT`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_room VARCHAR(50)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_room VARCHAR(50)`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS shared_token VARCHAR(20)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS validated_priority INTEGER DEFAULT NULL`);
 
     // ── Create verification_attempts table for OTP rate limiting ───
     await db.query(`
