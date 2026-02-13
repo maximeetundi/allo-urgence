@@ -57,9 +57,30 @@ const updateEmailSchema = Joi.object({
     }),
 });
 
+const updateUserSchema = Joi.object({
+    nom: Joi.string().min(2).max(100).optional().messages({
+        'string.min': 'Le nom doit contenir au moins 2 caractères',
+        'string.max': 'Le nom ne peut pas dépasser 100 caractères',
+    }),
+    prenom: Joi.string().min(2).max(100).optional().messages({
+        'string.min': 'Le prénom doit contenir au moins 2 caractères',
+        'string.max': 'Le prénom ne peut pas dépasser 100 caractères',
+    }),
+    telephone: Joi.string().pattern(/^[0-9+\-\s()]+$/).optional().allow(null, '').messages({
+        'string.pattern.base': 'Numéro de téléphone invalide',
+    }),
+    ramq_number: Joi.string().optional().allow(null, ''),
+    date_naissance: Joi.date().optional().allow(null, ''),
+    contact_urgence: Joi.string().optional().allow(null, ''),
+    allergies: Joi.string().optional().allow(null, ''),
+    conditions_medicales: Joi.string().optional().allow(null, ''),
+    medicaments: Joi.string().optional().allow(null, ''),
+});
+
 module.exports = {
     registerSchema,
     loginSchema,
     verifyEmailSchema,
     updateEmailSchema,
+    updateUserSchema,
 };

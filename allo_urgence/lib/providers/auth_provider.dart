@@ -152,37 +152,59 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateProfile({
+    String? nom,
+    String? prenom,
+    String? telephone,
+    String? ramqNumber,
+    String? dateNaissance,
+    String? contactUrgence,
+    String? allergies,
+    String? conditionsMedicales,
+    String? medicaments,
+  }) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await apiService.put('/auth/me', {
+        if (nom != null) 'nom': nom,
+        if (prenom != null) 'prenom': prenom,
+        if (telephone != null) 'telephone': telephone,
+        if (ramqNumber != null) 'ramq_number': ramqNumber,
+        if (dateNaissance != null) 'date_naissance': dateNaissance,
+        if (contactUrgence != null) 'contact_urgence': contactUrgence,
+        if (allergies != null) 'allergies': allergies,
+        if (conditionsMedicales != null) 'conditions_medicales': conditionsMedicales,
+        if (medicaments != null) 'medicaments': medicaments,
+      });
+
+      // Update local user object
+      // data['user'] contains the updated user object from backend
+      if (data['user'] != null) {
+         _user = User.fromJson(data['user']);
+      }
+      
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> updateEmail(String newEmail) async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
-      final data = await apiService.put('/auth/update-email', {'newEmail': newEmail}); // Use PUT if implemented as PUT in API service, checking api_service.dart... ApiService has patch/post/get. Need to check if PUT exists or add it.
-      // Wait, api_service.dart (Step 981) has get, post, patch. NO PUT.
-      // I must update auth.routes.js to use PATCH or update api_service to add PUT?
-      // I used router.put in backend.
-      // I should add put to ApiService OR change backend to router.patch.
-      // Standard is PATCH for partial update. I'll stick to PATCH in backend for simplicity?
-      // No, I already wrote router.put. I should add put to ApiService.
+      final data = await apiService.put('/auth/update-email', {'newEmail': newEmail});
       
-      // ... actually I'll use PATCH in api_service call here, but I need to change backend to PATCH?
-      // Or I can add PUT to default_api:replace_file_content on api_service.dart.
-      // Let's add PUT to api_service.dart first.
-      
-      // Let's abort this replace and fix api_service first? 
-      // Or I can assume I will fix it.
-      
-      // Wait, let's just use PATCH in backend to avoid modifying ApiService if possible?
-      // Existing api_service has PATCH.
-      // But I already wrote PUT in backend (Step 1014).
-      // So I MUST add PUT to api_service.dart.
-      // Or change backend to PATCH.
-      // Changing backend is "replace_file_content" again.
-      // Adding PUT to api_service is "replace_file_content".
-      // I'll add PUT to api_service.dart.
-     
-      // ... For this step, I will write the code assuming 'apiService.put' exists.
-      
+      // Update local user object manually as email update might trigger verification process
       _user = User.fromJson({..._user!.toJson(), 'email': newEmail});
       _loading = false;
       notifyListeners();

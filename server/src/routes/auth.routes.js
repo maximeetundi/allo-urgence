@@ -6,7 +6,7 @@ const db = require('../db/pg_connection');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
 const { sendMail, verificationEmail, welcomeEmail } = require('../services/mail.service');
 const { validate } = require('../middleware/validation');
-const { registerSchema, loginSchema, verifyEmailSchema, updateEmailSchema } = require('../schemas/auth.schema');
+const { registerSchema, loginSchema, verifyEmailSchema, updateEmailSchema, updateUserSchema } = require('../schemas/auth.schema');
 const { authLoginLimiter, authRegisterLimiter, resendVerificationLimiter } = require('../middleware/rateLimiter');
 const { otpVerificationLimiter, otpResendLimiter } = require('../middleware/otpLimiter');
 const logger = require('../utils/logger');
@@ -228,6 +228,35 @@ router.get('/me', authenticateToken, async (req, res) => {
         if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
         const { password_hash: _, verification_code: __, verification_expires_at: ___, ...safeUser } = user;
         res.json(safeUser);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// ── PUT /api/auth/me ────────────────────────────────────────────
+// Update user profile (excluding email/password)
+router.put('/me', authenticateToken, validate(updateUserSchema), async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const updates = req.body;
+
+        // Prevent updating restricted fields through this endpoint
+        delete updates.email;
+        delete updates.password;
+        delete updates.role;
+        delete updates.id;
+        delete updates.email_verified;
+
+        const user = await db.findById('users', userId);
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        const updatedUser = await db.update('users', userId, updates);
+
+        const { password_hash: _, verification_code: __, verification_expires_at: ___, ...safeUser } = updatedUser;
+        res.json({
+            message: 'Profil mis à jour avec succès',
+            user: safeUser
+        });
     } catch (err) {
         next(err);
     }

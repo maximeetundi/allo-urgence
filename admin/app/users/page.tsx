@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getUsers, createUser, deleteUser } from '@/lib/api';
+import { getUsers, createUser, updateUser, deleteUser } from '@/lib/api';
 import {
-  Plus, Trash2, Search, X, UserPlus,
+  Plus, Trash2, Edit2, Search, X, UserPlus,
   Shield, Stethoscope, Heart, Users as UsersIcon,
 } from 'lucide-react';
 
@@ -31,6 +31,7 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [saving, setSaving] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUser, setNewUser] = useState({
     email: '', password: '', nom: '', prenom: '', role: 'nurse', telephone: '',
   });
@@ -48,19 +49,45 @@ export default function UsersPage() {
     }
   };
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await createUser(newUser);
+      if (editingUser) {
+        const updateData = { ...newUser };
+        if (!updateData.password) delete (updateData as any).password;
+        await updateUser(editingUser.id, updateData);
+      } else {
+        await createUser(newUser);
+      }
       setShowModal(false);
+      setEditingUser(null);
       setNewUser({ email: '', password: '', nom: '', prenom: '', role: 'nurse', telephone: '' });
       loadUsers();
     } catch (error: any) {
-      alert(error.message || 'Erreur lors de la création');
+      alert(error.message || 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    setNewUser({
+      email: user.email,
+      password: '', // Leave empty to keep unchanged
+      nom: user.nom || '',
+      prenom: user.prenom || '',
+      role: user.role,
+      telephone: user.telephone || '',
+    });
+    setShowModal(true);
+  };
+
+  const openCreate = () => {
+    setEditingUser(null);
+    setNewUser({ email: '', password: '', nom: '', prenom: '', role: 'nurse', telephone: '' });
+    setShowModal(true);
   };
 
   const handleDeleteUser = async (id: string, name: string) => {
@@ -103,7 +130,7 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Utilisateurs</h1>
           <p className="text-gray-400 text-sm mt-0.5">{users.length} utilisateurs enregistrés</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 text-sm">
+        <button onClick={openCreate} className="btn-primary flex items-center gap-2 text-sm">
           <Plus size={18} />
           Nouvel utilisateur
         </button>
@@ -121,8 +148,8 @@ export default function UsersPage() {
             key={chip.key}
             onClick={() => setRoleFilter(chip.key)}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-200 border ${roleFilter === chip.key
-                ? 'bg-primary-50 text-primary-700 border-primary-200 shadow-sm'
-                : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
+              ? 'bg-primary-50 text-primary-700 border-primary-200 shadow-sm'
+              : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'
               }`}
           >
             {chip.label}
@@ -187,6 +214,12 @@ export default function UsersPage() {
                     >
                       <Trash2 size={16} />
                     </button>
+                    <button
+                      onClick={() => handleEdit(user)}
+                      className="p-2 text-gray-300 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all ml-1"
+                    >
+                      <Edit2 size={16} />
+                    </button>
                   </td>
                 </tr>
               );
@@ -210,14 +243,16 @@ export default function UsersPage() {
                 <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-primary-500 rounded-xl flex items-center justify-center">
                   <UserPlus size={18} className="text-white" />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">Nouvel utilisateur</h2>
+                <h2 className="text-lg font-bold text-gray-900">
+                  {editingUser ? 'Modifier' : 'Nouvel'} utilisateur
+                </h2>
               </div>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
                 <X size={18} className="text-gray-400" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5 ml-0.5">Prénom</label>
@@ -238,8 +273,10 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5 ml-0.5">Mot de passe</label>
-                <input type="password" required value={newUser.password}
+                <label className="block text-xs font-medium text-gray-500 mb-1.5 ml-0.5">
+                  Mot de passe {editingUser && <span className="text-gray-400 font-normal">(laisser vide pour conserver)</span>}
+                </label>
+                <input type="password" required={!editingUser} value={newUser.password}
                   onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="input" />
               </div>
 
@@ -264,7 +301,7 @@ export default function UsersPage() {
                   Annuler
                 </button>
                 <button type="submit" disabled={saving} className="btn-primary flex-1 flex items-center justify-center gap-2">
-                  {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Créer'}
+                  {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : editingUser ? 'Mettre à jour' : 'Créer'}
                 </button>
               </div>
             </form>

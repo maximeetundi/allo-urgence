@@ -260,6 +260,79 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       const SizedBox(height: 28),
 
 
+                      // Debug Credentials Button
+                      // if (kDebugMode)
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
+                              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                              builder: (context) => Container(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    const Text('Comptes de Démo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                                    const SizedBox(height: 16),
+                                    // Patient
+                                    ListTile(
+                                      leading: const Icon(Icons.person_outline),
+                                      title: const Text('Patient (Luc Bouchard)'),
+                                      subtitle: const Text('patient@test.ca'),
+                                      onTap: () {
+                                        _emailController.text = 'patient@test.ca';
+                                        _passwordController.text = 'Patient123!';
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    // Nurse
+                                    ListTile(
+                                      leading: const Icon(Icons.medical_services_outlined),
+                                      title: const Text('Infirmier (Marie Tremblay)'),
+                                      subtitle: const Text('nurse@allourgence.ca'),
+                                      onTap: () {
+                                        _emailController.text = 'nurse@allourgence.ca';
+                                        _passwordController.text = 'Nurse123!';
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    // Doctor
+                                    ListTile(
+                                      leading: const Icon(Icons.monitor_heart_outlined),
+                                      title: const Text('Médecin (Jean Gagnon)'),
+                                      subtitle: const Text('doctor@allourgence.ca'),
+                                      onTap: () {
+                                        _emailController.text = 'doctor@allourgence.ca';
+                                        _passwordController.text = 'Doctor123!';
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    // Admin
+                                    ListTile(
+                                      leading: const Icon(Icons.admin_panel_settings_outlined),
+                                      title: const Text('Admin (Super Admin)'),
+                                      subtitle: const Text('admin@allourgence.ca'),
+                                      onTap: () {
+                                        _emailController.text = 'admin@allourgence.ca';
+                                        _passwordController.text = 'Admin123!';
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Remplir Infos Démo',
+                            style: TextStyle(color: isDark ? Colors.white.withOpacity(0.5) : AlloUrgenceTheme.textTertiary),
+                          ),
+                        ),
+                      ),
+
                       const SizedBox(height: 40),
                     ],
                   ),
