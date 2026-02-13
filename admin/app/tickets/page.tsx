@@ -4,46 +4,10 @@ import { useState, useEffect } from 'react';
 import { getTickets, getHospitals } from '@/lib/api';
 import {
   Search, Clock, CheckCircle, AlertCircle, MapPin, Zap, Activity,
-  AlertTriangle, Timer,
+  AlertTriangle, Timer, X
 } from 'lucide-react';
 
-interface Ticket {
-  id: string;
-  code?: string;
-  patient_id: string;
-  hospital_id: string;
-  status: string;
-  priority_level: number;
-  validated_priority?: number;
-  patient_nom?: string;
-  patient_prenom?: string;
-  patient_name?: string;
-  queue_position?: number;
-  estimated_wait_minutes?: number;
-  created_at: string;
-}
-
-interface Hospital {
-  id: string;
-  name: string;
-}
-
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  waiting: { label: 'En attente', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
-  in_triage: { label: 'Triage', color: 'bg-purple-50 text-purple-700 border-purple-200', icon: Activity },
-  triaged: { label: 'Trié', color: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: AlertCircle },
-  in_progress: { label: 'En cours', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: Zap },
-  treated: { label: 'Traité', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
-  completed: { label: 'Terminé', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: CheckCircle },
-};
-
-const priorityConfig: Record<number, { label: string; color: string; dot: string }> = {
-  1: { label: 'P1 — Réanimation', color: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
-  2: { label: 'P2 — Très urgent', color: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
-  3: { label: 'P3 — Urgent', color: 'bg-yellow-50 text-yellow-700 border-yellow-200', dot: 'bg-yellow-500' },
-  4: { label: 'P4 — Moins urgent', color: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
-  5: { label: 'P5 — Non urgent', color: 'bg-green-50 text-green-700 border-green-200', dot: 'bg-green-500' },
-};
+// ... (interfaces skipped for brevity in replacement if not needed, but I need to target lines)
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -52,6 +16,8 @@ export default function TicketsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -67,6 +33,21 @@ export default function TicketsPage() {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdate = async (id: string, updates: any) => {
+    setUpdating(true);
+    try {
+      const updated = await import('@/lib/api').then(m => m.updateTicket(id, updates));
+      setTickets(tickets.map(t => t.id === id ? { ...t, ...updated } : t));
+      if (selectedTicket?.id === id) {
+        setSelectedTicket({ ...selectedTicket, ...updated });
+      }
+    } catch (error) {
+      alert('Erreur lors de la mise à jour');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -197,12 +178,15 @@ export default function TicketsPage() {
                 const StatusIcon = statusConf.icon;
 
                 return (
-                  <tr key={ticket.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={ticket.id}
+                    onClick={() => setSelectedTicket(ticket)}
+                    className="hover:bg-gray-50/50 transition-colors cursor-pointer active:bg-gray-100"
+                  >
                     <td className="table-cell">
                       <div className="flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold ${prio <= 2 ? 'bg-red-100 text-red-700' :
-                            prio === 3 ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-blue-100 text-blue-700'
+                          prio === 3 ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-blue-100 text-blue-700'
                           }`}>
                           P{prio}
                         </div>
@@ -266,6 +250,125 @@ export default function TicketsPage() {
           </div>
         )}
       </div>
+
+      {/* Detailed Modal */}
+      {selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedTicket(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-gray-50/50 p-6 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold ${(selectedTicket.validated_priority || selectedTicket.priority_level) <= 2 ? 'bg-red-100 text-red-700' :
+                  (selectedTicket.validated_priority || selectedTicket.priority_level) === 3 ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                  P{selectedTicket.validated_priority || selectedTicket.priority_level}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{getPatientName(selectedTicket)}</h2>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span className="font-mono">#{selectedTicket.code || 'NO-CODE'}</span>
+                    <span>•</span>
+                    <span>{statusConfig[selectedTicket.status]?.label}</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setSelectedTicket(null)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+                <Search size={20} className="text-gray-400 rotate-45" /> {/* Using Search as X because X is not imported, or handle import */}
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-8">
+              {/* Actions Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button
+                  onClick={() => handleUpdate(selectedTicket.id, { status: 'checked_in' })}
+                  disabled={updating}
+                  className="p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-semibold transition-colors flex flex-col items-center gap-2"
+                >
+                  <CheckCircle size={20} />
+                  Check-in
+                </button>
+                <button
+                  onClick={() => handleUpdate(selectedTicket.id, { status: 'triage' })}
+                  disabled={updating}
+                  className="p-3 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-semibold transition-colors flex flex-col items-center gap-2"
+                >
+                  <Activity size={20} />
+                  En Triage
+                </button>
+                <button
+                  onClick={() => handleUpdate(selectedTicket.id, { status: 'in_progress', room: 'Box 1' })}
+                  disabled={updating}
+                  className="p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold transition-colors flex flex-col items-center gap-2"
+                >
+                  <Zap size={20} />
+                  En Soin
+                </button>
+                <button
+                  onClick={() => handleUpdate(selectedTicket.id, { status: 'treated' })}
+                  disabled={updating}
+                  className="p-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold transition-colors flex flex-col items-center gap-2"
+                >
+                  <CheckCircle size={20} />
+                  Terminé
+                </button>
+              </div>
+
+              {/* Priority Override */}
+              <div>
+                <h3 className="text-xs font-bold text-gray-400 uppercase mb-3">Changer la priorité</h3>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map(p => (
+                    <button
+                      key={p}
+                      onClick={() => handleUpdate(selectedTicket.id, { priority: p })}
+                      className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${(selectedTicket.validated_priority || selectedTicket.priority_level) === p
+                        ? 'ring-2 ring-offset-2 ring-gray-200 ' + priorityConfig[p].color
+                        : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                        }`}
+                    >
+                      P{p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Info Grid */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-xs font-bold text-gray-400 uppercase mb-3">Informations</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-[10px] text-gray-400">Hôpital</label>
+                      <p className="text-sm font-medium text-gray-900">{getHospitalName(selectedTicket.hospital_id)}</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400">Position file</label>
+                      <p className="text-sm font-medium text-gray-900">{selectedTicket.queue_position || '—'}</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400">Attente estimée</label>
+                      <p className="text-sm font-medium text-gray-900">{selectedTicket.estimated_wait_minutes} min</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 p-4 flex justify-end">
+              <button
+                onClick={() => handleUpdate(selectedTicket.id, { status: 'cancelled' })}
+                className="text-red-600 text-xs font-medium hover:bg-red-50 px-4 py-2 rounded-lg transition-colors"
+              >
+                Annuler le ticket
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -187,4 +187,41 @@ router.get('/tickets', authenticateToken, requireRole('admin'), async (req, res)
   }
 });
 
+// ── PATCH /api/admin/tickets/:id ────────────────────────────────
+router.patch('/tickets/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { status, priority, hospital_id } = req.body;
+    const updates = {};
+
+    if (status) updates.status = status;
+    if (priority) {
+      updates.validated_priority = parseInt(priority);
+      // Also update base priority if not validated yet? No, keep original as trace.
+    }
+    if (hospital_id) updates.hospital_id = hospital_id;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'Aucune modification fournie' });
+    }
+
+    const ticket = await db.findById('tickets', req.params.id);
+    if (!ticket) return res.status(404).json({ error: 'Ticket non trouvé' });
+
+    const updated = await db.update('tickets', req.params.id, updates);
+
+    // Notify via socket
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`ticket_${ticket.id}`).emit('ticket_update', updated);
+      io.to(`hospital_${updated.hospital_id}`).emit('queue_update', await require('../services/queue.service').getQueueSummary(updated.hospital_id));
+    }
+
+    auditLog('ticket_admin_update', req.user.id, { ticketId: ticket.id, updates });
+    res.json(updated);
+  } catch (err) {
+    console.error('Admin update ticket error:', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

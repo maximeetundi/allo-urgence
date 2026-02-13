@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Activity,
   Shield,
+  Settings,
 } from 'lucide-react';
 
 const menuItems = [
@@ -20,6 +21,7 @@ const menuItems = [
   { icon: Users, label: 'Utilisateurs', href: '/users' },
   { icon: Building2, label: 'Hôpitaux', href: '/hospitals' },
   { icon: Ticket, label: 'Tickets', href: '/tickets' },
+  { icon: Settings, label: 'Configuration', href: '/settings' },
 ];
 
 export default function Sidebar() {
@@ -80,8 +82,8 @@ export default function Sidebar() {
                 <Link
                   href={item.href}
                   className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive
-                      ? 'bg-white/10 text-white shadow-sm'
-                      : 'text-primary-200 hover:bg-white/5 hover:text-white'
+                    ? 'bg-white/10 text-white shadow-sm'
+                    : 'text-primary-200 hover:bg-white/5 hover:text-white'
                     } ${collapsed ? 'justify-center' : ''}`}
                 >
                   {isActive && (

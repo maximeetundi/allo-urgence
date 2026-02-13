@@ -51,6 +51,9 @@ export const getTickets = (params?: Record<string, string>) => {
   const qs = params ? '?' + new URLSearchParams(params).toString() : '';
   return fetchApi(`/admin/tickets${qs}`).then(d => d.tickets || d);
 };
+export const getTicket = (id: string) => fetchApi(`/tickets/${id}`);
+export const updateTicket = (id: string, data: any) =>
+  fetchApi(`/admin/tickets/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 
 // Stats
 export const getDashboardStats = () => fetchApi('/admin/stats');

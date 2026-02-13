@@ -9,11 +9,23 @@ const helmet = require('helmet');
 const app = express();
 const server = http.createServer(app);
 
-// CORS
 const corsOptions = {
-    origin: process.env.NODE_ENV === 'production'
-        ? ['https://api.allo-urgence.tech-afm.com', 'https://admin.allo-urgence.tech-afm.com', 'https://allo-urgence.tech-afm.com']
-        : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3355', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'https://admin.allo-urgence.tech-afm.com', 'https://allo-urgence.tech-afm.com'],
+    origin: (origin, callback) => {
+        const allowedOrigins = [
+            'https://api.allo-urgence.tech-afm.com',
+            'https://admin.allo-urgence.tech-afm.com',
+            'https://allo-urgence.tech-afm.com'
+        ];
+        // Allow requests with no origin (like mobile apps/Postman) or localhost for dev/testing
+        if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+            return callback(null, true);
+        }
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            return callback(null, true);
+        } else {
+            return callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
