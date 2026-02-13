@@ -58,8 +58,13 @@ app.use(express.json({ limit: '10mb' }));
 // Rate limiting
 app.use('/api/', apiLimiter);
 
-// Serve uploads statically
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve uploads statically with CORS headers
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+    setHeaders: (res, path, stat) => {
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.set('Access-Control-Allow-Origin', '*');
+    }
+}));
 
 // Performance monitoring
 app.use((req, res, next) => {
