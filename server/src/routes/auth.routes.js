@@ -152,11 +152,56 @@ router.post('/resend-verification', authenticateToken, async (req, res) => {
 
         res.json({
             message: 'Nouveau code envoyé',
-            ...(result.previewUrl ? { previewUrl: result.previewUrl } : {}),
         });
     } catch (err) {
         console.error('Resend error:', err.message);
         res.status(500).json({ error: 'Erreur lors du renvoi' });
+    }
+});
+
+// ── PUT /api/auth/update-email ──────────────────────────────────
+router.put('/update-email', authenticateToken, async (req, res) => {
+    try {
+        const { newEmail } = req.body;
+        if (!newEmail) return res.status(400).json({ error: 'Nouvel email requis' });
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newEmail)) {
+            return res.status(400).json({ error: 'Format invalide' });
+        }
+
+        const user = await db.findById('users', req.user.id);
+        if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+        if (user.email_verified) {
+            return res.status(403).json({ error: 'Compte déjà vérifié, modification impossible ici.' });
+        }
+
+        const existing = await db.findOne('users', { email: newEmail });
+        if (existing) {
+            return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+        }
+
+        const newCode = generateCode();
+        const newExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        await db.update('users', user.id, {
+            email: newEmail,
+            verification_code: newCode,
+            verification_expires_at: newExpires.toISOString(),
+        });
+
+        // Send new code
+        const emailTemplate = verificationEmail(user.prenom, newCode);
+        const result = await sendMail({ to: newEmail, ...emailTemplate });
+
+        res.json({
+            message: 'Email mis à jour et code renvoyé',
+            user: { ...user, email: newEmail },
+        });
+    } catch (err) {
+        console.error('Update email error:', err.message);
+        res.status(500).json({ error: 'Erreur lors de la mise à jour' });
     }
 });
 

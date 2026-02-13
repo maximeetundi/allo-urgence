@@ -104,6 +104,12 @@
       "languageVersion": "3.9"
     },
     {
+      "name": "google_nav_bar",
+      "rootUri": "file:///C:/Users/D/AppData/Local/Pub/Cache/hosted/pub.dev/google_nav_bar-5.0.7",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "hooks",
       "rootUri": "file:///C:/Users/D/AppData/Local/Pub/Cache/hosted/pub.dev/hooks-1.0.1",
       "packageUri": "lib/",
@@ -150,6 +156,12 @@
       "rootUri": "file:///C:/Users/D/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker_testing-3.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.2"
+    },
+    {
+      "name": "line_icons",
+      "rootUri": "file:///C:/Users/D/AppData/Local/Pub/Cache/hosted/pub.dev/line_icons-2.0.3",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
     },
     {
       "name": "lints",
