@@ -3,7 +3,7 @@ const db = require('../db/pg_connection');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'allo-urgence-dev-secret';
 
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -12,9 +12,16 @@ function authenticateToken(req, res, next) {
     }
 
     try {
+        // Check if token is blacklisted
+        const blacklisted = await db.findOne('token_blacklist', { token });
+        if (blacklisted) {
+            return res.status(403).json({ error: 'Session expirée (déconnecté)' });
+        }
+
         req.user = jwt.verify(token, JWT_SECRET);
+        req.token = token; // Attach token for logout
         next();
-    } catch {
+    } catch (err) {
         return res.status(403).json({ error: 'Token invalide ou expiré' });
     }
 }

@@ -150,7 +150,20 @@ async function initDatabase() {
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS checked_in_by UUID REFERENCES users(id)`);
     await db.query(`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS image_url TEXT`);
     await db.query(`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS image_url TEXT`);
+    await db.query(`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS image_url TEXT`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS priority_level INTEGER DEFAULT 5`);
+
+    // ── Fix missing columns from initial schema drift ────────────────
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS pre_triage_category VARCHAR(100)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS patient_nom VARCHAR(100)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS patient_prenom VARCHAR(100)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS patient_telephone VARCHAR(30)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS allergies TEXT`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS conditions_medicales TEXT`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS date_naissance DATE`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS qr_code TEXT`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_room VARCHAR(50)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS shared_token VARCHAR(20)`);
 
     // ── Create verification_attempts table for OTP rate limiting ───
     await db.query(`
@@ -165,8 +178,20 @@ async function initDatabase() {
     // Index for faster queries
     await db.query(`
       CREATE INDEX IF NOT EXISTS idx_verification_attempts_user_time 
+      CREATE INDEX IF NOT EXISTS idx_verification_attempts_user_time 
       ON verification_attempts(user_id, created_at DESC)
     `);
+
+    // ── Create token_blacklist table for server-side logout ──────────
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS token_blacklist (
+        token TEXT PRIMARY KEY,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    // Cleanup old tokens automatically could be done via cron or on insert
+    await db.query(`DELETE FROM token_blacklist WHERE expires_at < CURRENT_TIMESTAMP`);
 
     // ── Seed demo data (idempotent) ────────────────────────────────
     // ── Seed demo data (idempotent checks) ─────────────────────────

@@ -219,6 +219,15 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    try {
+      if (_token != null) {
+        await apiService.post('/auth/logout', {});
+      }
+    } catch (e) {
+      // Ignore network errors during logout, proceed to local cleanup
+      print('Logout error: $e');
+    }
+
     _user = null;
     _token = null;
     apiService.clearToken();

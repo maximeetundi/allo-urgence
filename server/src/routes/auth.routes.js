@@ -284,4 +284,23 @@ router.put('/me', authenticateToken, validate(updateUserSchema), async (req, res
     }
 });
 
+// ── POST /api/auth/logout ──────────────────────────────────────
+router.post('/logout', authenticateToken, async (req, res, next) => {
+    try {
+        const token = req.token;
+        // Decode to get expiration
+        const decoded = jwt.decode(token);
+        const expiresAt = new Date(decoded.exp * 1000);
+
+        await db.query(
+            `INSERT INTO token_blacklist (token, expires_at) VALUES ($1, $2)`,
+            [token, expiresAt.toISOString()]
+        );
+
+        res.json({ message: 'Déconnexion réussie' });
+    } catch (err) {
+        next(err);
+    }
+});
+
 module.exports = router;
