@@ -115,4 +115,10 @@ app.use(errorHandler);
 
 
 
+const PORT = process.env.PORT || 3355;
+server.listen(PORT, '0.0.0.0', () => {
+    logger.info(`Serveur démarré sur le port ${PORT}`);
+    logger.info(`Documentation API disponible sur ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+});
+
 module.exports = { app, server, io };
