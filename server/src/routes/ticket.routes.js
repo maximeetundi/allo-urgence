@@ -34,14 +34,17 @@ router.post('/', authenticateToken, async (req, res) => {
         }
 
         // Calculate priority from new triage system
+        // Calculate priority
         let estimatedPriority = 5; // Default
-        if (triage_answers && Object.keys(triage_answers).length > 0) {
+
+        if (category_id) {
+            // Use triageService which matches frontend questions
+            const result = triageService.calculatePriority(category_id, triage_answers || {});
+            estimatedPriority = result.priority || 5;
+        } else if (triage_answers && Object.keys(triage_answers).length > 0) {
+            // Use new config/triage system as fallback
             const result = calculatePriority(triage_answers);
-            estimatedPriority = result.priority;
-        } else if (category_id) {
-            // Fallback to old system if using categories
-            const category = triageService.getCategories().find((c) => c.id === category_id);
-            estimatedPriority = triageService.calculatePriority(category_id, triage_answers || {});
+            estimatedPriority = result.priority || 5;
         }
 
         // Get patient info
@@ -73,16 +76,16 @@ router.post('/', authenticateToken, async (req, res) => {
         const io = req.app.get('io');
         if (io) {
             io.to(`hospital_${hospital_id}`).emit('new_ticket', updated);
-            if (priority <= 2) {
+            if (estimatedPriority <= 2) {
                 io.to(`hospital_${hospital_id}`).emit('critical_alert', {
                     ticketId: updated.id,
-                    priority,
+                    priority: estimatedPriority,
                     patientName: `${patient?.prenom} ${patient?.nom}`,
                 });
             }
         }
 
-        auditLog('ticket_created', req.user.id, { ticketId: updated.id, priority });
+        auditLog('ticket_created', req.user.id, { ticketId: updated.id, priority: estimatedPriority });
         res.status(201).json({ ticket: updated });
     } catch (err) {
         console.error('Create ticket error:', err.message);
