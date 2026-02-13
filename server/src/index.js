@@ -113,7 +113,6 @@ app.set('io', io);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-process.exit(1);
-});
+
 
 module.exports = { app, server, io };
