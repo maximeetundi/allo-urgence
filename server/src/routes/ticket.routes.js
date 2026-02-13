@@ -5,6 +5,7 @@ const db = require('../db/pg_connection');
 const { authenticateToken, requireRole, auditLog } = require('../middleware/auth');
 const { recalculateQueue, getQueueSummary } = require('../services/queue.service');
 const triageService = require('../services/triage.service');
+const { calculatePriority } = require('../config/triage');
 
 // ── GET /api/tickets/triage-categories ──────────────────────────
 router.get('/triage-categories', (req, res) => {
@@ -19,8 +20,8 @@ router.post('/', authenticateToken, async (req, res) => {
     try {
         const { hospital_id, category_id, triage_answers } = req.body;
 
-        if (!hospital_id || !category_id) {
-            return res.status(400).json({ error: 'hospital_id et category_id requis' });
+        if (!hospital_id) {
+            return res.status(400).json({ error: 'hospital_id requis' });
         }
 
         const hospital = await db.findById('hospitals', hospital_id);
@@ -32,9 +33,16 @@ router.post('/', authenticateToken, async (req, res) => {
             return res.status(409).json({ error: 'Vous avez déjà un ticket actif', ticket: existing });
         }
 
-        // Calculate priority from triage
-        const category = triageService.getCategories().find((c) => c.id === category_id);
-        const priority = triageService.calculatePriority(category_id, triage_answers || {});
+        // Calculate priority from new triage system
+        let estimatedPriority = 5; // Default
+        if (triage_answers && Object.keys(triage_answers).length > 0) {
+            const result = calculatePriority(triage_answers);
+            estimatedPriority = result.priority;
+        } else if (category_id) {
+            // Fallback to old system if using categories
+            const category = triageService.getCategories().find((c) => c.id === category_id);
+            estimatedPriority = triageService.calculatePriority(category_id, triage_answers || {});
+        }
 
         // Get patient info
         const patient = await db.findById('users', req.user.id);
@@ -42,9 +50,10 @@ router.post('/', authenticateToken, async (req, res) => {
         const ticket = await db.insert('tickets', {
             patient_id: req.user.id,
             hospital_id,
-            priority_level: priority,
+            priority_level: estimatedPriority,
+            estimated_priority: estimatedPriority,
             status: 'waiting',
-            pre_triage_category: category?.label || category_id,
+            pre_triage_category: category_id || 'triage_questionnaire',
             triage_answers: JSON.stringify(triage_answers || {}),
             shared_token: uuidv4().slice(0, 8).toUpperCase(),
             patient_nom: patient?.nom || '',

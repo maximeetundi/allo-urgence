@@ -83,6 +83,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> with 
     }
   }
 
+  void _skipVerification() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const PatientHomeScreen()),
+      (_) => false,
+    );
+  }
+
   void _showEditEmailDialog() {
     final emailC = TextEditingController(text: context.read<AuthProvider>().user?.email);
     showDialog(

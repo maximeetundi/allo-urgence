@@ -11,13 +11,19 @@ services:
       - NODE_ENV=production
       - PORT=3355
       - API_URL=https://api.allo-urgence.tech-afm.com
-      - JWT_SECRET=${JWT_SECRET:-allo-urgence-secret-change-me}
+      - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=24h
       - DB_HOST=db
       - DB_PORT=5432
       - DB_NAME=allourgence
       - DB_USER=allourgence
-      - DB_PASSWORD=${DB_PASSWORD:-secretpassword}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM_ADDRESS=${SMTP_FROM_ADDRESS}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Allo Urgence Support}
     volumes:
       - backend-data:/app/data
     networks:
@@ -53,7 +59,7 @@ services:
     restart: unless-stopped
     environment:
       - POSTGRES_USER=allourgence
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-secretpassword}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=allourgence
     volumes:
       - postgres-data:/var/lib/postgresql/data

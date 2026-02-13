@@ -80,6 +80,22 @@ async function initDatabase() {
     `);
 
     await db.query(`
+      CREATE TABLE IF NOT EXISTS device_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL UNIQUE,
+        platform VARCHAR(20) NOT NULL CHECK (platform IN ('android', 'ios')),
+        last_used TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_device_tokens_user 
+      ON device_tokens(user_id, last_used DESC)
+    `);
+
+    await db.query(`
       CREATE TABLE IF NOT EXISTS doctor_notes (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         ticket_id UUID REFERENCES tickets(id),
@@ -88,6 +104,22 @@ async function initDatabase() {
         diagnosis TEXT,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS share_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        ticket_id UUID UNIQUE REFERENCES tickets(id) ON DELETE CASCADE,
+        token VARCHAR(255) UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        revoked BOOLEAN DEFAULT false,
+        created_by UUID REFERENCES users(id),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_share_tokens_token ON share_tokens(token);
+      CREATE INDEX IF NOT EXISTS idx_share_tokens_ticket ON share_tokens(ticket_id);
     `);
 
     await db.query(`
@@ -105,6 +137,33 @@ async function initDatabase() {
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code VARCHAR(6)`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT false`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS triage_answers JSONB`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS estimated_priority INTEGER CHECK (estimated_priority BETWEEN 1 AND 5)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS triage_justification TEXT`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS triaged_by UUID REFERENCES users(id)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS triaged_at TIMESTAMPTZ`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS alert_acknowledged BOOLEAN DEFAULT false`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS alert_acknowledged_by UUID REFERENCES users(id)`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS alert_acknowledged_at TIMESTAMPTZ`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT false`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS checked_in_by UUID REFERENCES users(id)`);
+
+    // ── Create verification_attempts table for OTP rate limiting ───
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS verification_attempts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        attempt_type VARCHAR(20) NOT NULL CHECK (attempt_type IN ('verify', 'resend')),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Index for faster queries
+    await db.query(`
+      CREATE INDEX IF NOT EXISTS idx_verification_attempts_user_time 
+      ON verification_attempts(user_id, created_at DESC)
+    `);
 
     // ── Seed demo data (idempotent) ────────────────────────────────
     const userCount = await db.count('users');

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import QueryProvider from '@/components/QueryProvider';
 import './globals.css';
 
 export default function RootLayout({
@@ -30,18 +32,22 @@ export default function RootLayout({
         <meta name="description" content="Panneau d'administration Allo Urgence" />
       </head>
       <body className="bg-gray-50 min-h-screen" suppressHydrationWarning>
-        {isLoginPage ? (
-          <main className="min-h-screen">{children}</main>
-        ) : (
-          <div className="flex h-screen overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto">
-              <div className="p-8 max-w-[1400px] mx-auto">
-                {mounted && children}
+        <ErrorBoundary>
+          <QueryProvider>
+            {isLoginPage ? (
+              <main className="min-h-screen">{children}</main>
+            ) : (
+              <div className="flex h-screen overflow-hidden">
+                <Sidebar />
+                <main className="flex-1 overflow-y-auto">
+                  <div className="p-8 max-w-[1400px] mx-auto">
+                    {mounted && children}
+                  </div>
+                </main>
               </div>
-            </main>
-          </div>
-        )}
+            )}
+          </QueryProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

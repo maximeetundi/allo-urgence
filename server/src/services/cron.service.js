@@ -62,7 +62,14 @@ function initCron() {
         }
     });
 
-    console.log('✅ Service Cron démarré : Vérification des rappels toutes les minutes.');
+    // ── Cleanup old verification attempts (daily at 3 AM) ───────────
+    cron.schedule('0 3 * * *', async () => {
+        console.log('🧹 Running verification attempts cleanup...');
+        const { cleanupOldAttempts } = require('../middleware/otpLimiter');
+        await cleanupOldAttempts();
+    });
+
+    console.log('✅ Cron jobs initialized');
 }
 
 module.exports = { initCron };

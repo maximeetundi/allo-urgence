@@ -47,6 +47,24 @@ class User {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'role': role,
+      'email': email,
+      'nom': nom,
+      'prenom': prenom,
+      'date_naissance': dataNaissance,
+      'ramq_number': ramqNumber,
+      'telephone': telephone,
+      'contact_urgence': contactUrgence,
+      'allergies': allergies,
+      'conditions_medicales': conditionsMedicales,
+      'medicaments': medicaments,
+      'email_verified': emailVerified,
+    };
+  }
+
   String get fullName => '$prenom $nom';
   bool get isPatient => role == 'patient';
   bool get isNurse => role == 'nurse';

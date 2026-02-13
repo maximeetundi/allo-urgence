@@ -39,13 +39,13 @@ class Database {
     const columns = Object.keys(data);
     const values = Object.values(data);
     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-    
+
     const query = `
       INSERT INTO ${table} (${columns.join(', ')})
       VALUES (${placeholders})
       RETURNING *
     `;
-    
+
     const result = await this.query(query, values);
     return result.rows[0];
   }
@@ -60,7 +60,7 @@ class Database {
     const columns = Object.keys(conditions);
     const values = Object.values(conditions);
     const whereClause = columns.map((col, i) => `${col} = $${i + 1}`).join(' AND ');
-    
+
     const query = `SELECT * FROM ${table} WHERE ${whereClause}`;
     const result = await this.query(query, values);
     return result.rows[0] || null;
@@ -69,22 +69,41 @@ class Database {
   async findMany(table, conditions = null, orderBy = null, limit = null) {
     let query = `SELECT * FROM ${table}`;
     const values = [];
-    
+
     if (conditions) {
       const columns = Object.keys(conditions);
       const whereClause = columns.map((col, i) => `${col} = $${i + 1}`).join(' AND ');
       query += ` WHERE ${whereClause}`;
       values.push(...Object.values(conditions));
     }
-    
+
+    // ✅ SECURITY: Whitelist allowed columns for ORDER BY
     if (orderBy) {
-      query += ` ORDER BY ${orderBy}`;
+      const allowedColumns = ['id', 'created_at', 'updated_at', 'priority', 'status', 'nom', 'prenom', 'email'];
+      const parts = orderBy.trim().split(/\s+/);
+      const column = parts[0];
+      const direction = (parts[1] || 'ASC').toUpperCase();
+
+      if (!allowedColumns.includes(column)) {
+        throw new Error(`Invalid order column: ${column}`);
+      }
+
+      if (!['ASC', 'DESC'].includes(direction)) {
+        throw new Error(`Invalid order direction: ${direction}`);
+      }
+
+      query += ` ORDER BY ${column} ${direction}`;
     }
-    
+
+    // ✅ SECURITY: Validate LIMIT is a safe integer
     if (limit) {
-      query += ` LIMIT ${limit}`;
+      const limitNum = parseInt(limit, 10);
+      if (isNaN(limitNum) || limitNum < 1 || limitNum > 1000) {
+        throw new Error('Invalid limit value (must be 1-1000)');
+      }
+      query += ` LIMIT ${limitNum}`;
     }
-    
+
     const result = await this.query(query, values);
     return result.rows;
   }
@@ -93,14 +112,14 @@ class Database {
     const columns = Object.keys(data);
     const values = Object.values(data);
     const setClause = columns.map((col, i) => `${col} = $${i + 2}`).join(', ');
-    
+
     const query = `
       UPDATE ${table}
       SET ${setClause}, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1
       RETURNING *
     `;
-    
+
     const result = await this.query(query, [id, ...values]);
     return result.rows[0] || null;
   }
@@ -114,14 +133,14 @@ class Database {
   async count(table, conditions = null) {
     let query = `SELECT COUNT(*) as count FROM ${table}`;
     const values = [];
-    
+
     if (conditions) {
       const columns = Object.keys(conditions);
       const whereClause = columns.map((col, i) => `${col} = $${i + 1}`).join(' AND ');
       query += ` WHERE ${whereClause}`;
       values.push(...Object.values(conditions));
     }
-    
+
     const result = await this.query(query, values);
     return parseInt(result.rows[0].count);
   }

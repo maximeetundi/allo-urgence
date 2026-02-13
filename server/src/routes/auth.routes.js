@@ -5,6 +5,12 @@ const jwt = require('jsonwebtoken');
 const db = require('../db/pg_connection');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
 const { sendMail, verificationEmail, welcomeEmail } = require('../services/mail.service');
+const { validate } = require('../middleware/validation');
+const { registerSchema, loginSchema, verifyEmailSchema, updateEmailSchema } = require('../schemas/auth.schema');
+const { authLoginLimiter, authRegisterLimiter, resendVerificationLimiter } = require('../middleware/rateLimiter');
+const { otpVerificationLimiter, otpResendLimiter } = require('../middleware/otpLimiter');
+const logger = require('../utils/logger');
+const { ConflictError, ValidationError } = require('../utils/errors');
 
 // ── Helper: generate 6-digit verification code ──────────────────
 function generateCode() {
@@ -12,7 +18,7 @@ function generateCode() {
 }
 
 // ── POST /api/auth/register ─────────────────────────────────────
-router.post('/register', async (req, res) => {
+router.post('/register', authRegisterLimiter, validate(registerSchema), async (req, res, next) => {
     try {
         const {
             email, password, nom, prenom, telephone,
@@ -41,7 +47,7 @@ router.post('/register', async (req, res) => {
 
         const existing = await db.findOne('users', { email });
         if (existing) {
-            return res.status(409).json({ error: 'Un compte avec ce courriel existe déjà' });
+            throw new ConflictError('Un compte avec ce courriel existe déjà');
         }
 
         const password_hash = bcrypt.hashSync(password, 10);
@@ -66,9 +72,9 @@ router.post('/register', async (req, res) => {
         const emailTemplate = verificationEmail(prenom, verificationCode);
         sendMail({ to: email, ...emailTemplate })
             .then(result => {
-                if (result.previewUrl) console.log(`📧 Dev preview: ${result.previewUrl}`);
+                if (result.previewUrl) logger.info('Email preview', { url: result.previewUrl });
             })
-            .catch(err => console.error('Mail send error:', err));
+            .catch(err => logger.error('Mail send error', { error: err.message }));
 
         const token = jwt.sign(
             { id: user.id, role: user.role, email: user.email },
@@ -84,18 +90,14 @@ router.post('/register', async (req, res) => {
             requiresVerification: true,
         });
     } catch (err) {
-        console.error('Register error:', err.message);
-        res.status(500).json({ error: 'Erreur lors de l\'inscription' });
+        next(err);
     }
 });
 
 // ── POST /api/auth/verify-email ─────────────────────────────────
-router.post('/verify-email', authenticateToken, async (req, res) => {
+router.post('/verify-email', authenticateToken, otpVerificationLimiter, validate(verifyEmailSchema), async (req, res, next) => {
     try {
         const { code } = req.body;
-        if (!code) {
-            return res.status(400).json({ error: 'Code de vérification requis' });
-        }
 
         const user = await db.findById('users', req.user.id);
         if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -124,13 +126,12 @@ router.post('/verify-email', authenticateToken, async (req, res) => {
 
         res.json({ message: 'Courriel vérifié avec succès !', verified: true });
     } catch (err) {
-        console.error('Verify error:', err.message);
-        res.status(500).json({ error: 'Erreur lors de la vérification' });
+        next(err);
     }
 });
 
 // ── POST /api/auth/resend-verification ──────────────────────────
-router.post('/resend-verification', authenticateToken, async (req, res) => {
+router.post('/resend-verification', authenticateToken, resendVerificationLimiter, otpResendLimiter, async (req, res, next) => {
     try {
         const user = await db.findById('users', req.user.id);
         if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -154,21 +155,14 @@ router.post('/resend-verification', authenticateToken, async (req, res) => {
             message: 'Nouveau code envoyé',
         });
     } catch (err) {
-        console.error('Resend error:', err.message);
-        res.status(500).json({ error: 'Erreur lors du renvoi' });
+        next(err);
     }
 });
 
 // ── PUT /api/auth/update-email ──────────────────────────────────
-router.put('/update-email', authenticateToken, async (req, res) => {
+router.put('/update-email', authenticateToken, validate(updateEmailSchema), async (req, res, next) => {
     try {
         const { newEmail } = req.body;
-        if (!newEmail) return res.status(400).json({ error: 'Nouvel email requis' });
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(newEmail)) {
-            return res.status(400).json({ error: 'Format invalide' });
-        }
 
         const user = await db.findById('users', req.user.id);
         if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
@@ -179,7 +173,7 @@ router.put('/update-email', authenticateToken, async (req, res) => {
 
         const existing = await db.findOne('users', { email: newEmail });
         if (existing) {
-            return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+            throw new ConflictError('Cet email est déjà utilisé');
         }
 
         const newCode = generateCode();
@@ -200,18 +194,14 @@ router.put('/update-email', authenticateToken, async (req, res) => {
             user: { ...user, email: newEmail },
         });
     } catch (err) {
-        console.error('Update email error:', err.message);
-        res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+        next(err);
     }
 });
 
 // ── POST /api/auth/login ────────────────────────────────────────
-router.post('/login', async (req, res) => {
+router.post('/login', authLoginLimiter, validate(loginSchema), async (req, res, next) => {
     try {
         const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Courriel et mot de passe requis' });
-        }
 
         const user = await db.findOne('users', { email });
         if (!user || !bcrypt.compareSync(password, user.password_hash)) {
@@ -227,8 +217,7 @@ router.post('/login', async (req, res) => {
         const { password_hash: _, verification_code: __, verification_expires_at: ___, ...safeUser } = user;
         res.json({ token, user: safeUser });
     } catch (err) {
-        console.error('Login error:', err.message);
-        res.status(500).json({ error: 'Erreur lors de la connexion' });
+        next(err);
     }
 });
 
@@ -240,8 +229,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         const { password_hash: _, verification_code: __, verification_expires_at: ___, ...safeUser } = user;
         res.json(safeUser);
     } catch (err) {
-        console.error('Me error:', err.message);
-        res.status(500).json({ error: 'Erreur serveur' });
+        next(err);
     }
 });
 
