@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/theme.dart';
 import 'register_screen.dart';
-import '../patient/home_screen.dart';
+import '../patient/main_navigation_screen.dart';
 import '../nurse/dashboard_screen.dart';
 import '../doctor/patient_list_screen.dart';
 import 'email_verification_screen.dart';
@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       } else if (auth.user!.isDoctor) {
         destination = const DoctorPatientListScreen();
       } else {
-        destination = const PatientHomeScreen();
+        destination = const PatientMainScreen();
       }
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(

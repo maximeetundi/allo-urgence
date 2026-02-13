@@ -51,6 +51,7 @@ async function initDatabase() {
         status VARCHAR(30) NOT NULL DEFAULT 'waiting',
         queue_position INTEGER,
         estimated_wait_minutes INTEGER,
+        code VARCHAR(20),
         qr_code TEXT,
         assigned_room VARCHAR(50),
         shared_token VARCHAR(20),
@@ -64,7 +65,8 @@ async function initDatabase() {
         date_naissance DATE,
         reminder_sent BOOLEAN DEFAULT false,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(code)
       );
     `);
 

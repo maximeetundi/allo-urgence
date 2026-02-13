@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/theme.dart';
-import '../patient/home_screen.dart';
+import '../patient/main_navigation_screen.dart';
+// import '../patient/home_screen.dart'; // No longer needed directly here if we use MainNavigationScreen
 import 'login_screen.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
@@ -71,7 +72,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> with 
         await Future.delayed(const Duration(seconds: 1));
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const PatientHomeScreen()),
+          MaterialPageRoute(builder: (_) => const PatientMainScreen()),
           (_) => false,
         );
       } else {
@@ -99,7 +100,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> with 
 
   void _skipVerification() {
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const PatientHomeScreen()),
+      MaterialPageRoute(builder: (_) => const PatientMainScreen()),
       (_) => false,
     );
   }

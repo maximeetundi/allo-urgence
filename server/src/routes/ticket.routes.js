@@ -56,6 +56,7 @@ router.post('/', authenticateToken, async (req, res) => {
             priority_level: estimatedPriority,
             estimated_priority: estimatedPriority,
             status: 'waiting',
+            code: 'T' + uuidv4().split('-')[0].toUpperCase(), // Simple code generation
             pre_triage_category: category_id || 'triage_questionnaire',
             triage_answers: JSON.stringify(triage_answers || {}),
             shared_token: uuidv4().slice(0, 8).toUpperCase(),
