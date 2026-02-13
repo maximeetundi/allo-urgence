@@ -9,6 +9,7 @@ import '../auth/login_screen.dart';
 import 'home_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
+import 'notifications_screen.dart';
 
 class PatientMainScreen extends StatefulWidget {
   const PatientMainScreen({super.key});
@@ -154,6 +155,11 @@ class _PatientDrawer extends StatelessWidget {
               onTap: () => onTabSelected(1)),
             _PatientDrawerItem(icon: Icons.local_hospital_rounded, label: 'Hôpital',
               onTap: () => Navigator.pop(context)),
+            _PatientDrawerItem(icon: LineIcons.bell, label: 'Notifications',
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+              }),
             _PatientDrawerItem(icon: LineIcons.user, label: 'Profil', selected: selectedIndex == 2,
               onTap: () => onTabSelected(2)),
             _PatientDrawerItem(icon: Icons.settings_rounded, label: 'Paramètres',

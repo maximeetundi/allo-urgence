@@ -150,6 +150,7 @@ async function initDatabase() {
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS checked_in_by UUID REFERENCES users(id)`);
     await db.query(`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS image_url TEXT`);
     await db.query(`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS image_url TEXT`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS priority_level INTEGER DEFAULT 5`);
 
     // ── Create verification_attempts table for OTP rate limiting ───
     await db.query(`

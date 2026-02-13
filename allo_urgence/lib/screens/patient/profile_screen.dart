@@ -15,96 +15,106 @@ class PatientProfileScreen extends StatelessWidget {
     final user = auth.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 20),
-              // Avatar
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: AlloUrgenceTheme.primaryGradient,
-                  shape: BoxShape.circle,
-                  boxShadow: [AlloUrgenceTheme.coloredShadow(AlloUrgenceTheme.primaryLight)],
-                ),
-                child: Center(
-                  child: Text(
-                    user?.prenom.isNotEmpty == true ? user!.prenom[0].toUpperCase() : '?',
-                    style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white),
-                  ),
-                ),
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 20),
+            // Header with Menu
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(context).openDrawer(),
               ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${user?.prenom} ${user?.nom ?? ''}',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(LineIcons.edit, size: 20, color: AlloUrgenceTheme.primaryLight),
-                    onPressed: () => _showEditProfileModal(context, user),
-                  ),
-                ],
+            ),
+            // ... rest of content ...
+            // Wait, I need to include the rest of the children.
+            // I'll be careful with line matching.
+            const SizedBox(height: 10),
+            // Avatar
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                gradient: AlloUrgenceTheme.primaryGradient,
+                shape: BoxShape.circle,
+                boxShadow: [AlloUrgenceTheme.coloredShadow(AlloUrgenceTheme.primaryLight)],
               ),
-              Text(
-                user?.email ?? '',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary,
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // Settings Section
-              _SectionHeader(title: 'Paramètres'),
-              const SizedBox(height: 16),
-              _SettingsTile(
-                icon: LineIcons.moon,
-                title: 'Mode sombre',
-                trailing: const _ThemeSwitch(),
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // Account Section
-              _SectionHeader(title: 'Compte'),
-              const SizedBox(height: 16),
-              _SettingsTile(
-                icon: LineIcons.alternateSignOut,
-                title: 'Se déconnecter',
-                textColor: AlloUrgenceTheme.error,
-                iconColor: AlloUrgenceTheme.error,
-                onTap: () async {
-                   await auth.logout();
-                   if (!context.mounted) return;
-                   Navigator.of(context).pushAndRemoveUntil(
-                     MaterialPageRoute(builder: (_) => const LoginScreen()),
-                     (_) => false,
-                   );
-                },
-              ),
-              const SizedBox(height: 12),
-              Center(
+              child: Center(
                 child: Text(
-                  'Version 1.0.0',
-                  style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textTertiary),
+                  user?.prenom.isNotEmpty == true ? user!.prenom[0].toUpperCase() : '?',
+                  style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white),
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '${user?.prenom} ${user?.nom ?? ''}',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(LineIcons.edit, size: 20, color: AlloUrgenceTheme.primaryLight),
+                  onPressed: () => _showEditProfileModal(context, user),
+                ),
+              ],
+            ),
+            Text(
+              user?.email ?? '',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary,
+              ),
+            ),
+
+            const SizedBox(height: 40),
+
+            // Settings Section
+            _SectionHeader(title: 'Paramètres'),
+            const SizedBox(height: 16),
+            _SettingsTile(
+              icon: LineIcons.moon,
+              title: 'Mode sombre',
+              trailing: const _ThemeSwitch(),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Account Section
+            _SectionHeader(title: 'Compte'),
+            const SizedBox(height: 16),
+            _SettingsTile(
+              icon: LineIcons.alternateSignOut,
+              title: 'Se déconnecter',
+              textColor: AlloUrgenceTheme.error,
+              iconColor: AlloUrgenceTheme.error,
+              onTap: () async {
+                 await auth.logout();
+                 if (!context.mounted) return;
+                 Navigator.of(context).pushAndRemoveUntil(
+                   MaterialPageRoute(builder: (_) => const LoginScreen()),
+                   (_) => false,
+                 );
+              },
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                'Version 1.0.0',
+                style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textTertiary),
+              ),
+            ),
+          ],
         ),
       ),
     );

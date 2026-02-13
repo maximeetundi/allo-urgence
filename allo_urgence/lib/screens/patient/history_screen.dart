@@ -26,36 +26,60 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     final history = ticketProvider.history;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Historique des visites'),
-        centerTitle: false,
-      ),
-      body: history.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.history, size: 64, color: AlloUrgenceTheme.textTertiary),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Aucune visite passée',
-                    style: TextStyle(fontSize: 18, color: AlloUrgenceTheme.textSecondary),
+    return SafeArea(
+      child: Column(
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.menu, color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Historique des visites',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary,
                   ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: history.length,
-              itemBuilder: (context, index) {
-                final ticket = history[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _HistoryCard(ticket: ticket),
-                );
-              },
+                ),
+              ],
             ),
+          ),
+          // Content
+          Expanded(
+            child: history.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.history, size: 64, color: AlloUrgenceTheme.textTertiary),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Aucune visite passée',
+                          style: TextStyle(fontSize: 18, color: AlloUrgenceTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: history.length,
+                    itemBuilder: (context, index) {
+                      final ticket = history[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _HistoryCard(ticket: ticket),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
