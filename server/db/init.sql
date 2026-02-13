@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     status VARCHAR(20) NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'in_progress', 'completed')),
     priority INTEGER NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 5),
     validated_priority INTEGER DEFAULT NULL,
+    queue_position INTEGER DEFAULT NULL,
+    estimated_wait_minutes INTEGER DEFAULT NULL,
     patient_name VARCHAR(255),
     patient_phone VARCHAR(20),
     symptoms TEXT,

@@ -21,6 +21,8 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
   Hospital? _selectedHospital;
   TriageCategory? _selectedCategory;
   List<Hospital> _hospitals = [];
+  List<Hospital> _filteredHospitals = [];
+  final TextEditingController _searchController = TextEditingController();
   double _painLevel = 0;
   bool _breathingDifficulty = false;
   String _symptomDuration = '1_24h';
@@ -52,10 +54,24 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
       if (!mounted) return;
       setState(() {
         _hospitals = (data['hospitals'] as List).map((h) => Hospital.fromJson(h)).toList();
+        _filteredHospitals = _hospitals;
       });
     } catch (e) {
       debugPrint('❌ Failed to load hospitals: $e');
     }
+  }
+
+  void _filterHospitals(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredHospitals = _hospitals;
+      } else {
+        _filteredHospitals = _hospitals.where((h) =>
+          h.name.toLowerCase().contains(query.toLowerCase()) ||
+          h.address.toLowerCase().contains(query.toLowerCase())
+        ).toList();
+      }
+    });
     if (!mounted) return;
     final ticket = context.read<TicketProvider>();
     await ticket.loadTriageCategories();
@@ -203,6 +219,8 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
 
   // ── Step 0: Hospital Selection ────────────────────────────────
   Widget _buildHospitalStep() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -212,19 +230,64 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
         Text('Sélectionnez un hôpital proche de vous',
           style: TextStyle(fontSize: 14, color: AlloUrgenceTheme.textSecondary)),
         const SizedBox(height: 20),
-        ..._hospitals.asMap().entries.map((entry) => TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: Duration(milliseconds: 400 + entry.key * 100),
-          builder: (_, value, child) => Opacity(opacity: value, child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child)),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _HospitalCard(
-              hospital: entry.value,
-              selected: _selectedHospital?.id == entry.value.id,
-              onTap: () { setState(() => _selectedHospital = entry.value); _goToStep(1); },
+        
+        // Search Bar
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [AlloUrgenceTheme.cardShadow],
+          ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _filterHospitals,
+            decoration: InputDecoration(
+              hintText: 'Rechercher un hôpital...',
+              hintStyle: TextStyle(color: AlloUrgenceTheme.textTertiary),
+              prefixIcon: Icon(Icons.search_rounded, color: AlloUrgenceTheme.primaryLight),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              suffixIcon: _searchController.text.isNotEmpty 
+                ? IconButton(
+                    icon: Icon(Icons.clear_rounded, color: AlloUrgenceTheme.textTertiary),
+                    onPressed: () {
+                      _searchController.clear();
+                      _filterHospitals('');
+                    },
+                  )
+                : null,
             ),
           ),
-        )),
+        ),
+        const SizedBox(height: 20),
+
+        if (_filteredHospitals.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Column(
+                children: [
+                  Icon(Icons.location_off_rounded, size: 48, color: AlloUrgenceTheme.textTertiary),
+                  const SizedBox(height: 16),
+                  Text('Aucun hôpital trouvé', style: TextStyle(color: AlloUrgenceTheme.textSecondary)),
+                ],
+              ),
+            ),
+          )
+        else
+          ..._filteredHospitals.asMap().entries.map((entry) => TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: Duration(milliseconds: 400 + (entry.key > 5 ? 0 : entry.key * 100)), // Limit staggering for long lists
+            builder: (_, value, child) => Opacity(opacity: value, child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child)),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _HospitalCard(
+                hospital: entry.value,
+                selected: _selectedHospital?.id == entry.value.id,
+                onTap: () { setState(() => _selectedHospital = entry.value); _goToStep(1); },
+              ),
+            ),
+          )),
       ],
     );
   }

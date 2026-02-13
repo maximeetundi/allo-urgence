@@ -168,6 +168,8 @@ async function initDatabase() {
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS assigned_room VARCHAR(50)`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS shared_token VARCHAR(20)`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS validated_priority INTEGER DEFAULT NULL`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS queue_position INTEGER DEFAULT NULL`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS estimated_wait_minutes INTEGER DEFAULT NULL`);
 
     // ── Create verification_attempts table for OTP rate limiting ───
     await db.query(`
@@ -212,25 +214,44 @@ async function initDatabase() {
 
     // Hospitals
     if (hospitalCount === 0) {
-      console.log('🏥 Insertion des hôpitaux par défaut...');
-      await db.insert('hospitals', {
-        name: 'Hôpital Général de Montréal',
-        address: '1650 Avenue Cedar, Montréal, QC H3G 1A4',
-        latitude: 45.4735, longitude: -73.5920, capacity: 150,
-        image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Montreal_General_Hospital.jpg/800px-Montreal_General_Hospital.jpg',
-      });
-      await db.insert('hospitals', {
-        name: 'CHUM — Centre Hospitalier de l\'Université de Montréal',
-        address: '1051 Rue Sanguinet, Montréal, QC H2X 3E4',
-        latitude: 45.5115, longitude: -73.5572, capacity: 200,
-        image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/CHUM_Phase_2.jpg/800px-CHUM_Phase_2.jpg',
-      });
-      await db.insert('hospitals', {
-        name: 'Hôpital Sainte-Justine',
-        address: '3175 Chemin de la Côte-Sainte-Catherine, Montréal, QC H3T 1C5',
-        latitude: 45.5015, longitude: -73.6191, capacity: 120,
-        image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/H%C3%B4pital_Sainte-Justine_2017.jpg/800px-H%C3%B4pital_Sainte-Justine_2017.jpg',
-      });
+      console.log('🏥 Insertion des hôpitaux du Québec (Liste étendue)...');
+      const baseUrl = process.env.BACKEND_URL || 'http://localhost:3355';
+      const hospitals = [
+        { name: 'Hôpital Général de Montréal', address: '1650 Avenue Cedar, Montréal, QC H3G 1A4', latitude: 45.4973, longitude: -73.5886, image: 'montreal_general.jpg' },
+        { name: 'CHUM — Centre Hospitalier de l\'Université de Montréal', address: '1051 Rue Sanguinet, Montréal, QC H2X 3E4', latitude: 45.5115, longitude: -73.5572, image: 'chum.jpg' },
+        { name: 'Hôpital Sainte-Justine', address: '3175 Chemin de la Côte-Sainte-Catherine, Montréal, QC H3T 1C5', latitude: 45.5015, longitude: -73.6191, image: 'sainte_justine.jpg' },
+        { name: 'Hôpital Maisonneuve-Rosemont', address: '5415 Boulevard de l\'Assomption, Montréal, QC H1T 2M4', latitude: 45.5768, longitude: -73.5678, image: 'maisonneuve_rosemont.jpg' },
+        { name: 'Hôpital du Sacré-Cœur-de-Montréal', address: '5400 Boulevard Gouin O, Montréal, QC H4J 1C5', latitude: 45.5348, longitude: -73.7153, image: 'sacre_coeur.jpg' },
+        { name: 'Hôpital Général Juif', address: '3755 Chemin de la Côte-Sainte-Catherine, Montréal, QC H3T 1E2', latitude: 45.4965, longitude: -73.6300, image: 'jewish_general.jpg' },
+        { name: 'Centre Universitaire de Santé McGill (CUSM) — Site Glen', address: '1001 Boulevard Décarie, Montréal, QC H4A 3J1', latitude: 45.4740, longitude: -73.6015, image: 'cusm_glen.jpg' },
+        { name: 'Hôpital de Verdun', address: '4000 Boulevard LaSalle, Verdun, QC H4G 2A3', latitude: 45.4590, longitude: -73.5694, image: 'verdun.jpg' },
+        { name: 'Hôpital Santa Cabrini Ospedale', address: '5655 Rue Saint-Zotique E, Montréal, QC H1T 1P7', latitude: 45.5794, longitude: -73.5828, image: 'santa_cabrini.jpg' },
+        { name: 'Hôpital Jean-Talon', address: '1385 Rue Jean-Talon E, Montréal, QC H2E 1S6', latitude: 45.5467, longitude: -73.6105, image: 'jean_talon.jpg' },
+        { name: 'Hôpital Charles-Le Moyne', address: '3120 Boulevard Taschereau, Greenfield Park, QC J4V 2H1', latitude: 45.4925, longitude: -73.4864, image: 'charles_lemoyne.jpg' },
+        { name: 'Hôpital Pierre-Boucher', address: '1333 Boulevard Jacques-Cartier E, Longueuil, QC J4M 2A5', latitude: 45.5401, longitude: -73.4682, image: 'pierre_boucher.jpg' },
+        { name: 'Hôpital de la Cité-de-la-Santé', address: '1755 Boulevard René-Laennec, Laval, QC H7M 3L9', latitude: 45.5905, longitude: -73.7196, image: 'cite_sante.jpg' },
+        { name: 'CHU de Québec — Hôpital de l\'Enfant-Jésus', address: '1401 18e Rue, Québec, QC G1J 1Z4', latitude: 46.8378, longitude: -71.2268, image: 'enfant_jesus.jpg' },
+        { name: 'CHU de Québec — Hôpital Saint-François d\'Assise', address: '10 Rue de l\'Espinay, Québec, QC G1L 3L5', latitude: 46.8282, longitude: -71.2382, image: 'st_francois_assise.jpg' },
+        { name: 'Hôpital de Saint-Eustache', address: '520 Boulevard Arthur-Sauvé, Saint-Eustache, QC J7R 5B1', latitude: 45.5700, longitude: -73.9100, image: 'st_eustache.jpg' },
+        { name: 'Hôpital de Saint-Jérôme', address: '290 Rue de Montigny, Saint-Jérôme, QC J7Z 5T3', latitude: 45.7768, longitude: -74.0044, image: 'st_jerome.jpg' },
+        { name: 'Hôpital de Hull', address: '116 Boulevard Lionel-Émond, Gatineau, QC J8Y 1W7', latitude: 45.4388, longitude: -75.7505, image: 'hull.jpg' },
+        { name: 'Hôpital régional de Trois-Rivières', address: '1991 Boulevard du Carmel, Trois-Rivières, QC G8Z 3R9', latitude: 46.3683, longitude: -72.5694, image: 'trois_rivieres.jpg' },
+        { name: 'Hôtel-Dieu de Sherbrooke', address: '580 Rue Bowen S, Sherbrooke, QC J1G 2E8', latitude: 45.4057, longitude: -71.8841, image: 'sherbrooke.jpg' }
+      ];
+
+      for (const h of hospitals) {
+        // Construct local URL
+        const imageUrl = `${baseUrl}/uploads/hospitals/${h.image}`;
+
+        await db.insert('hospitals', {
+          name: h.name,
+          address: h.address,
+          latitude: h.latitude,
+          longitude: h.longitude,
+          capacity: Math.floor(Math.random() * (250 - 50 + 1)) + 50,
+          image_url: imageUrl,
+        });
+      }
     }
 
     // Demo users
