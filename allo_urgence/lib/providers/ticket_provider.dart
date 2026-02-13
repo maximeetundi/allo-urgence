@@ -19,6 +19,7 @@ class TicketProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> loadTriageCategories() async {
+    _error = null;
     try {
       final data = await apiService.get('/tickets/triage-categories');
       _categories = (data['categories'] as List)
@@ -35,6 +36,7 @@ class TicketProvider extends ChangeNotifier {
   }
 
   Future<void> loadActiveTicket() async {
+    _error = null;
     try {
       final data = await apiService.get('/tickets/patient/active');
       if (data['ticket'] != null) {
@@ -78,6 +80,7 @@ class TicketProvider extends ChangeNotifier {
 
   Future<void> refreshTicket() async {
     if (_activeTicket == null) return;
+    _error = null;
     try {
       final data = await apiService.get('/tickets/${_activeTicket!.id}');
       _activeTicket = Ticket.fromJson(data);
@@ -99,6 +102,7 @@ class TicketProvider extends ChangeNotifier {
   }
 
   Future<void> loadHistory() async {
+    _error = null;
     try {
       final data = await apiService.get('/tickets/patient/history');
       _history = (data['tickets'] as List)

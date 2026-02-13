@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../config/theme.dart';
 import 'auth/login_screen.dart';
 import 'patient/home_screen.dart';
+import 'patient/main_navigation_screen.dart';
 import 'nurse/dashboard_screen.dart';
 import 'doctor/patient_list_screen.dart';
 
@@ -69,7 +70,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     } else if (auth.user!.isDoctor) {
       destination = const DoctorPatientListScreen();
     } else {
-      destination = const PatientHomeScreen();
+      destination = const PatientMainScreen();
     }
 
     Navigator.of(context).pushReplacement(

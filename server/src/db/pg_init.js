@@ -62,6 +62,7 @@ async function initDatabase() {
         allergies TEXT,
         conditions_medicales TEXT,
         date_naissance DATE,
+        reminder_sent BOOLEAN DEFAULT false,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
@@ -103,6 +104,7 @@ async function initDatabase() {
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code VARCHAR(6)`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ`);
+    await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT false`);
 
     // ── Seed demo data (idempotent) ────────────────────────────────
     const userCount = await db.count('users');

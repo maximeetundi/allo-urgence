@@ -7,8 +7,21 @@ import 'providers/queue_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
 
+import 'package:flutter/services.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Enforce portrait mode and transparent system UI
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark, // For light background
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ));
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   runApp(const AlloUrgenceApp());
 }
 

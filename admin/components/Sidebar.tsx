@@ -21,6 +21,8 @@ const menuItems = [
   { icon: Users, label: 'Utilisateurs', href: '/users' },
   { icon: Building2, label: 'Hôpitaux', href: '/hospitals' },
   { icon: Ticket, label: 'Tickets', href: '/tickets' },
+  { icon: Activity, label: 'Triage (Infirmier)', href: '/triage' },
+  { icon: Shield, label: 'Médecin', href: '/doctor' }, // Using Shield as placeholder, will try Stethoscope if available but Shield is safe import
   { icon: Settings, label: 'Configuration', href: '/settings' },
 ];
 

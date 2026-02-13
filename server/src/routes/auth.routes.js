@@ -24,6 +24,17 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'Champs obligatoires manquants' });
         }
 
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'Format de courriel invalide' });
+        }
+
+        // Phone validation (if provided)
+        if (telephone && !/^\d{10,15}$/.test(telephone.replace(/[\s\-\(\)\+]/g, ''))) {
+            return res.status(400).json({ error: 'Numéro de téléphone invalide' });
+        }
+
         if (password.length < 6) {
             return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères' });
         }

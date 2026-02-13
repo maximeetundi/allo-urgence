@@ -139,10 +139,22 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                           ),
 
                           _field(_emailC, 'Courriel', Icons.mail_outline_rounded,
-                              type: TextInputType.emailAddress, validator: _req),
+                              type: TextInputType.emailAddress, 
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return 'Champ obligatoire';
+                                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Email invalide';
+                                return null;
+                              }),
 
                           _field(_telephoneC, 'Téléphone (optionnel)', Icons.phone_outlined,
-                              type: TextInputType.phone),
+                              type: TextInputType.phone,
+                              validator: (v) {
+                                if (v != null && v.isNotEmpty) {
+                                  // Basic global phone regex (mostly digits)
+                                  if (!RegExp(r'^\+?[\d\s-]{10,}$').hasMatch(v)) return 'Numéro invalide';
+                                }
+                                return null;
+                              }),
 
                           _field(
                             _passwordC, 'Mot de passe', Icons.lock_outline_rounded,

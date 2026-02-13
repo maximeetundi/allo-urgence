@@ -38,12 +38,17 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     final ticket = context.read<TicketProvider>();
     await ticket.loadActiveTicket();
     await ticket.loadHistory();
+    if (mounted && ticket.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ticket.error!), backgroundColor: AlloUrgenceTheme.error),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Optimized: Only watch AuthProvider here for header greeting
     final auth = context.watch<AuthProvider>();
-    final ticket = context.watch<TicketProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -84,18 +89,20 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                             ],
                           ),
                         ),
-                        // Theme toggle
-                        _ThemeToggle(),
-                        const SizedBox(width: 8),
-                        _AvatarButton(
-                          letter: auth.user?.prenom.isNotEmpty == true ? auth.user!.prenom[0] : '?',
-                          onTap: () async {
-                            await auth.logout();
-                            if (!mounted) return;
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false,
-                            );
-                          },
+                        // Avatar (Simple display)
+                        Container(
+                           width: 44, height: 44,
+                           decoration: BoxDecoration(
+                             gradient: AlloUrgenceTheme.primaryGradient,
+                             borderRadius: BorderRadius.circular(14),
+                             boxShadow: [AlloUrgenceTheme.coloredShadow(AlloUrgenceTheme.primaryLight)],
+                           ),
+                           child: Center(
+                             child: Text(
+                               auth.user?.prenom.isNotEmpty == true ? auth.user!.prenom[0].toUpperCase() : '?',
+                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+                             ),
+                           ),
                         ),
                       ],
                     ),
@@ -105,35 +112,36 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
 
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-              // Active ticket
-              if (ticket.activeTicket != null)
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: CurvedAnimation(parent: _animController, curve: const Interval(0.15, 0.65)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _ActiveTicketCard(ticket: ticket),
-                    ),
-                  ),
+              // Active ticket or Emergency Button (Wrapped in Consumer to isolate rebuilds)
+              SliverToBoxAdapter(
+                child: Consumer<TicketProvider>(
+                  builder: (context, ticket, _) {
+                    if (ticket.activeTicket != null) {
+                      return FadeTransition(
+                        opacity: CurvedAnimation(parent: _animController, curve: const Interval(0.15, 0.65)),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: _ActiveTicketCard(ticket: ticket),
+                        ),
+                      );
+                    } else {
+                      return FadeTransition(
+                        opacity: CurvedAnimation(parent: _animController, curve: const Interval(0.15, 0.65)),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: _EmergencyButton(
+                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PreTriageScreen())),
+                          ),
+                        ),
+                      );
+                    }
+                  },
                 ),
-
-              // Emergency button
-              if (ticket.activeTicket == null)
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: CurvedAnimation(parent: _animController, curve: const Interval(0.15, 0.65)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _EmergencyButton(
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PreTriageScreen())),
-                      ),
-                    ),
-                  ),
-                ),
+              ),
 
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-              // How it works
+              // How it works (Static, no consumer needed)
               SliverToBoxAdapter(
                 child: FadeTransition(
                   opacity: CurvedAnimation(parent: _animController, curve: const Interval(0.3, 0.8)),
@@ -144,45 +152,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                 ),
               ),
 
-              // History
-              if (ticket.history.isNotEmpty) ...[
-                SliverToBoxAdapter(
-                  child: FadeTransition(
-                    opacity: CurvedAnimation(parent: _animController, curve: const Interval(0.5, 1.0)),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                      child: Row(
-                        children: [
-                          Text('Historique', style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary,
-                          )),
-                          const Spacer(),
-                          Text('${ticket.history.length} visites', style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? AlloUrgenceTheme.darkTextTertiary : AlloUrgenceTheme.textTertiary,
-                          )),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) {
-                      final t = ticket.history[i];
-                      return FadeTransition(
-                        opacity: CurvedAnimation(parent: _animController, curve: Interval(0.5 + i * 0.05, 1.0)),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                          child: _HistoryCard(ticket: t),
-                        ),
-                      );
-                    },
-                    childCount: ticket.history.take(5).length,
-                  ),
-                ),
-              ],
+
 
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
@@ -194,64 +164,10 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
 }
 
 // ── Theme Toggle ────────────────────────────────────────────────
-class _ThemeToggle extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final themeProvider = context.watch<ThemeProvider>();
-    final isDark = themeProvider.isDarkMode;
-
-    return GestureDetector(
-      onTap: () => themeProvider.toggleTheme(),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : AlloUrgenceTheme.surfaceVariant,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.1) : AlloUrgenceTheme.divider,
-          ),
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: Icon(
-            isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-            key: ValueKey(isDark),
-            color: isDark ? const Color(0xFFFFD700) : AlloUrgenceTheme.textSecondary,
-            size: 20,
-          ),
-        ),
-      ),
-    );
-  }
-}
+// Removed: Moved to Profile Screen
 
 // ── Avatar Button ───────────────────────────────────────────────
-class _AvatarButton extends StatelessWidget {
-  final String letter;
-  final VoidCallback onTap;
-  const _AvatarButton({required this.letter, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          gradient: AlloUrgenceTheme.primaryGradient,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [AlloUrgenceTheme.coloredShadow(AlloUrgenceTheme.primaryLight)],
-        ),
-        child: Center(
-          child: Text(letter.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
-        ),
-      ),
-    );
-  }
-}
+// Removed: Moved to Profile Screen in logic, header simplified
 
 // ── Emergency Button ────────────────────────────────────────────
 class _EmergencyButton extends StatelessWidget {
@@ -500,64 +416,6 @@ class _Step extends StatelessWidget {
             fontSize: 14,
             color: isDark ? AlloUrgenceTheme.darkTextPrimary : AlloUrgenceTheme.textPrimary,
           ))),
-        ],
-      ),
-    );
-  }
-}
-
-// ── History Card ────────────────────────────────────────────────
-class _HistoryCard extends StatelessWidget {
-  final dynamic ticket;
-  const _HistoryCard({required this.ticket});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = AlloUrgenceTheme.getPriorityColor(ticket.effectivePriority);
-    final treated = ticket.status == 'treated';
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [AlloUrgenceTheme.cardShadow],
-        border: isDark ? Border.all(color: AlloUrgenceTheme.darkDivider.withValues(alpha: 0.5)) : null,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text('P${ticket.effectivePriority}', style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 14)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(ticket.statusLabel, style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary,
-                )),
-                Text(ticket.createdAt.toString().substring(0, 10), style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? AlloUrgenceTheme.darkTextTertiary : AlloUrgenceTheme.textTertiary,
-                )),
-              ],
-            ),
-          ),
-          Icon(
-            treated ? Icons.check_circle_rounded : Icons.schedule_rounded,
-            color: treated ? AlloUrgenceTheme.success : (isDark ? AlloUrgenceTheme.darkTextTertiary : AlloUrgenceTheme.textTertiary),
-            size: 20,
-          ),
         ],
       ),
     );

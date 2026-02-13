@@ -73,10 +73,15 @@ app.use((err, req, res, _next) => {
 // ── Start ───────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3355;
 
+const { initCron } = require('./services/cron.service');
+
 async function start() {
     // Initialize database (create tables + seed)
     const initDatabase = require('./db/pg_init');
     await initDatabase();
+
+    // Initialize Cron Jobs
+    initCron();
 
     server.listen(PORT, () => {
         console.log('');

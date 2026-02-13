@@ -7,7 +7,44 @@ import {
   AlertTriangle, Timer, X
 } from 'lucide-react';
 
-// ... (interfaces skipped for brevity in replacement if not needed, but I need to target lines)
+
+interface Ticket {
+  id: string;
+  code?: string;
+  patient_id: string;
+  hospital_id: string;
+  status: string;
+  priority_level: number;
+  validated_priority?: number;
+  patient_prenom?: string;
+  patient_nom?: string;
+  patient_name?: string;
+  queue_position?: number;
+  estimated_wait_minutes?: number;
+  created_at: string;
+}
+
+interface Hospital {
+  id: string;
+  name: string;
+}
+
+const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+  waiting: { label: 'En attente', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
+  in_triage: { label: 'Triage', color: 'bg-purple-50 text-purple-700 border-purple-200', icon: Activity },
+  triaged: { label: 'Trié', color: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: AlertCircle },
+  in_progress: { label: 'En cours', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: Zap },
+  treated: { label: 'Traité', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle },
+  completed: { label: 'Terminé', color: 'bg-gray-50 text-gray-500 border-gray-200', icon: CheckCircle },
+};
+
+const priorityConfig: Record<number, { label: string; color: string; dot: string }> = {
+  1: { label: 'P1 — Réanimation', color: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
+  2: { label: 'P2 — Très urgent', color: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
+  3: { label: 'P3 — Urgent', color: 'bg-yellow-50 text-yellow-700 border-yellow-200', dot: 'bg-yellow-500' },
+  4: { label: 'P4 — Moins urgent', color: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
+  5: { label: 'P5 — Non urgent', color: 'bg-green-50 text-green-700 border-green-200', dot: 'bg-green-500' },
+};
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
