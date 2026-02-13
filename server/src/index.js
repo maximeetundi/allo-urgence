@@ -12,6 +12,13 @@ const helmet = require('helmet');
 const logger = require('./utils/logger');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
+const initDatabase = require('./db/pg_init'); // Import DB init
+
+// Initialize Database (Async)
+initDatabase().catch(err => {
+    logger.error('Database initialization failed:', err);
+    process.exit(1);
+});
 
 const app = express();
 const server = http.createServer(app);
