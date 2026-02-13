@@ -181,9 +181,15 @@ function getEstimatedWait(priorityLevel, currentQueueCounts) {
     return wait;
 }
 
+// Helper to get all categories
+function getCategories() {
+    return TRIAGE_CATEGORIES;
+}
+
 module.exports = {
     TRIAGE_CATEGORIES,
     FOLLOW_UP_QUESTIONS,
     calculatePriority,
-    getEstimatedWait
+    getEstimatedWait,
+    getCategories
 };

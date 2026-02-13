@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../providers/auth_provider.dart';
 import '../config/theme.dart';
 import 'auth/login_screen.dart';
+import 'auth/email_verification_screen.dart';
 import 'patient/home_screen.dart';
 import 'patient/main_navigation_screen.dart';
 import 'nurse/dashboard_screen.dart';
@@ -65,6 +66,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     Widget destination;
     if (!auth.isAuthenticated) {
       destination = const LoginScreen();
+    } else if (!auth.user!.emailVerified) {
+      destination = const EmailVerificationScreen(); // Redirect to verification if not verified
     } else if (auth.user!.isNurse) {
       destination = const NurseDashboardScreen();
     } else if (auth.user!.isDoctor) {

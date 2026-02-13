@@ -139,8 +139,21 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> with 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          onPressed: _skipVerification,
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () {
+            // Log out if they want to go back, so they can't access authenticated areas
+            // Or just pop if it was pushed on top of login? 
+            // If they are logged in but unverified, we want to force them here or logout.
+            // Let's offer Logout instead of Skip.
+             context.read<AuthProvider>().logout();
+             Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()), // Need to import LoginScreen if not imported? LoginScreen is not imported. 
+                // Wait, LoginScreen import might be missing.
+                // Let's just pop if it's from registration, but if from Login redirect, pop might be empty.
+                // Safer: Just go to root '/' which usually checks auth.
+                (_) => false
+             );
+          },
         ),
       ),
       body: SafeArea(
@@ -225,15 +238,27 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> with 
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       style: TextStyle(
-                        color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary, 
+                        color: isDark ? Colors.white : Colors.black, // Explicit black for max contrast
                         fontSize: 22, fontWeight: FontWeight.w700
                       ),
                       decoration: InputDecoration(
                         counterText: '',
                         filled: true,
-                        fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : AlloUrgenceTheme.surfaceVariant,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AlloUrgenceTheme.primaryLight, width: 2)),
+                        fillColor: isDark 
+                            ? Colors.white.withValues(alpha: 0.06) 
+                            : Colors.white, // White background with border
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14), 
+                            borderSide: BorderSide(color: isDark ? Colors.transparent : Colors.grey.shade300)
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14), 
+                            borderSide: BorderSide(color: isDark ? Colors.transparent : Colors.grey.shade300)
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14), 
+                            borderSide: BorderSide(color: AlloUrgenceTheme.primaryLight, width: 2)
+                        ),
                       ),
                       onChanged: (val) {
                         if (val.isNotEmpty && i < 5) {

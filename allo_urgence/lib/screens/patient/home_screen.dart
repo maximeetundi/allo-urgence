@@ -5,6 +5,7 @@ import '../../providers/ticket_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../config/theme.dart';
 import '../auth/login_screen.dart';
+import '../auth/email_verification_screen.dart';
 import 'pre_triage_screen.dart';
 import 'ticket_screen.dart';
 
@@ -35,6 +36,18 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
   }
 
   Future<void> _loadData() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.user != null && !auth.user!.emailVerified) {
+       // Safety check: if user managed to get here without verification, redirect them back.
+       if (mounted) {
+         Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
+            (_) => false,
+         );
+       }
+       return;
+    }
+
     final ticket = context.read<TicketProvider>();
     await ticket.loadActiveTicket();
     await ticket.loadHistory();

@@ -6,7 +6,7 @@ const { authenticateToken } = require('../middleware/auth');
 // ── GET /api/hospitals — list all hospitals ─────────────────────
 router.get('/', async (req, res) => {
   try {
-    const hospitals = await db.findMany('hospitals', null, 'name ASC');
+    const hospitals = await db.findMany('hospitals', null, 'nom ASC');
     res.json({ hospitals });
   } catch (err) {
     console.error('Hospitals list error:', err.message);

@@ -59,6 +59,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     if (!mounted) return;
 
     if (success) {
+      if (!auth.user!.emailVerified) {
+        // Redirect to verification screen if email not verified
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
+          (_) => false,
+        );
+        return;
+      }
+
       Widget destination;
       if (auth.user!.isNurse) {
         destination = const NurseDashboardScreen();

@@ -21,6 +21,7 @@ initDatabase().catch(err => {
 });
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Docker/Nginx)
 const server = http.createServer(app);
 
 const corsOptions = {
