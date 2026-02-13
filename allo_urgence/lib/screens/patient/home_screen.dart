@@ -64,8 +64,7 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
     final auth = context.watch<AuthProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      body: SafeArea(
+    return SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadData,
           color: AlloUrgenceTheme.primaryLight,
@@ -185,7 +184,6 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
             ],
           ),
         ),
-      ),
     );
   }
 }

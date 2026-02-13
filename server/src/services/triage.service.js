@@ -186,10 +186,15 @@ function getCategories() {
     return TRIAGE_CATEGORIES;
 }
 
+function getFollowUpQuestions() {
+    return FOLLOW_UP_QUESTIONS;
+}
+
 module.exports = {
     TRIAGE_CATEGORIES,
     FOLLOW_UP_QUESTIONS,
     calculatePriority,
     getEstimatedWait,
-    getCategories
+    getCategories,
+    getFollowUpQuestions
 };

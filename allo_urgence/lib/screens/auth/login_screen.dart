@@ -300,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                       subtitle: const Text('patient@test.ca'),
                                       onTap: () {
                                         _emailController.text = 'patient@test.ca';
-                                        _passwordController.text = 'Patient123!';
+                                        _passwordController.text = 'patient123';
                                         Navigator.pop(context);
                                       },
                                     ),
@@ -311,7 +311,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                       subtitle: const Text('nurse@allourgence.ca'),
                                       onTap: () {
                                         _emailController.text = 'nurse@allourgence.ca';
-                                        _passwordController.text = 'Nurse123!';
+                                        _passwordController.text = 'nurse123';
                                         Navigator.pop(context);
                                       },
                                     ),
@@ -322,18 +322,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                       subtitle: const Text('doctor@allourgence.ca'),
                                       onTap: () {
                                         _emailController.text = 'doctor@allourgence.ca';
-                                        _passwordController.text = 'Doctor123!';
-                                        Navigator.pop(context);
-                                      },
-                                    ),
-                                    // Admin
-                                    ListTile(
-                                      leading: const Icon(Icons.admin_panel_settings_outlined),
-                                      title: const Text('Admin (Super Admin)'),
-                                      subtitle: const Text('admin@allourgence.ca'),
-                                      onTap: () {
-                                        _emailController.text = 'admin@allourgence.ca';
-                                        _passwordController.text = 'Admin123!';
+                                        _passwordController.text = 'doctor123';
                                         Navigator.pop(context);
                                       },
                                     ),
