@@ -49,7 +49,9 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
       setState(() {
         _hospitals = (data['hospitals'] as List).map((h) => Hospital.fromJson(h)).toList();
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('❌ Failed to load hospitals: $e');
+    }
     if (!mounted) return;
     final ticket = context.read<TicketProvider>();
     await ticket.loadTriageCategories();
@@ -527,7 +529,6 @@ class _HospitalCard extends StatelessWidget {
           boxShadow: [AlloUrgenceTheme.cardShadow],
         ),
         child: Row(
-          children: [
           children: [
             Container(
               width: 56, height: 56,

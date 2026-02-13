@@ -109,8 +109,6 @@ class PatientProfileScreen extends StatelessWidget {
       ),
     );
   }
-}
-
   void _showEditProfileModal(BuildContext context, dynamic user) {
     if (user == null) return;
     

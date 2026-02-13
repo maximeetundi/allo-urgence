@@ -18,12 +18,19 @@ class Hospital {
   });
 
   factory Hospital.fromJson(Map<String, dynamic> json) {
+    double? parseDouble(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      return null;
+    }
+
     return Hospital(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       address: json['address'] ?? '',
-      latitude: json['latitude']?.toDouble(),
-      longitude: json['longitude']?.toDouble(),
+      latitude: parseDouble(json['latitude']),
+      longitude: parseDouble(json['longitude']),
       capacity: json['capacity'] ?? 100,
       imageUrl: json['image_url'],
     );

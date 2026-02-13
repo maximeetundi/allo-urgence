@@ -26,12 +26,12 @@ export default function LoginPage() {
 
     try {
       const data = await login(email, password);
-      if (data.user?.role === 'admin' || data.user?.role === 'nurse' || data.user?.role === 'doctor') {
+      if (data.user?.role === 'admin') {
         localStorage.setItem('admin_token', data.token);
         localStorage.setItem('admin_user', JSON.stringify(data.user));
         router.push('/dashboard');
       } else {
-        setError('Accès réservé au personnel médical');
+        setError('Accès réservé aux administrateurs. Utilisez l\'application mobile.');
       }
     } catch (err: any) {
       setError(err.message || 'Identifiants invalides');

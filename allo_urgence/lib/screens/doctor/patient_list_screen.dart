@@ -36,12 +36,14 @@ class _DoctorPatientListScreenState extends State<DoctorPatientListScreen> with 
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final queue = context.watch<QueueProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final filtered = _filter == 'all'
       ? queue.tickets
       : queue.tickets.where((t) => t.status == _filter).toList();
 
     return Scaffold(
+      drawer: _DoctorDrawer(auth: auth),
       // backgroundColor follows theme
       body: SafeArea(
         child: RefreshIndicator(
@@ -58,35 +60,33 @@ class _DoctorPatientListScreenState extends State<DoctorPatientListScreen> with 
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                     child: Row(
                       children: [
+                        Builder(
+                          builder: (ctx) => GestureDetector(
+                            onTap: () => Scaffold.of(ctx).openDrawer(),
+                            child: Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: isDark ? AlloUrgenceTheme.darkSurfaceVariant : AlloUrgenceTheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(Icons.menu_rounded, color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary, size: 22),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 '👨‍⚕️ Dr. ${auth.user?.nom ?? ''}',
-                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.3,
+                                  color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
                               ),
                               const SizedBox(height: 4),
                               Text('Gestion des patients',
-                                style: TextStyle(fontSize: 14, color: AlloUrgenceTheme.textSecondary)),
+                                style: TextStyle(fontSize: 14, color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary)),
                             ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () async {
-                            await auth.logout();
-                            if (!mounted) return;
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false,
-                            );
-                          },
-                          child: Container(
-                            width: 44, height: 44,
-                            decoration: BoxDecoration(
-                              color: AlloUrgenceTheme.error.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(Icons.logout_rounded, color: AlloUrgenceTheme.error, size: 20),
                           ),
                         ),
                       ],
@@ -164,15 +164,16 @@ class _DoctorPatientListScreenState extends State<DoctorPatientListScreen> with 
     final diagnosisController = TextEditingController();
     final notesController = TextEditingController();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        decoration: BoxDecoration(
+          color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -210,7 +211,8 @@ class _DoctorPatientListScreenState extends State<DoctorPatientListScreen> with 
                       children: [
                         Text(
                           ticket.patientFullName.isNotEmpty ? ticket.patientFullName : 'Patient',
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
                         ),
                         Row(
                           children: [
@@ -253,16 +255,19 @@ class _DoctorPatientListScreenState extends State<DoctorPatientListScreen> with 
                         children: [
                           Icon(Icons.medical_information_rounded, size: 16, color: AlloUrgenceTheme.warning),
                           const SizedBox(width: 6),
-                          const Text('Informations médicales', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                          Text('Informations médicales', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary)),
                         ],
                       ),
                       if (ticket.allergies != null) ...[
                         const SizedBox(height: 8),
-                        Text('Allergies: ${ticket.allergies}', style: const TextStyle(fontSize: 13)),
+                        Text('Allergies: ${ticket.allergies}', style: TextStyle(fontSize: 13,
+                          color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textPrimary)),
                       ],
                       if (ticket.conditionsMedicales != null) ...[
                         const SizedBox(height: 4),
-                        Text('Conditions: ${ticket.conditionsMedicales}', style: const TextStyle(fontSize: 13)),
+                        Text('Conditions: ${ticket.conditionsMedicales}', style: TextStyle(fontSize: 13,
+                          color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textPrimary)),
                       ],
                     ],
                   ),
@@ -271,7 +276,8 @@ class _DoctorPatientListScreenState extends State<DoctorPatientListScreen> with 
               ],
 
               // Diagnosis
-              const Text('Diagnostic', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              Text('Diagnostic', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary)),
               const SizedBox(height: 8),
               TextField(
                 controller: diagnosisController,
@@ -285,7 +291,8 @@ class _DoctorPatientListScreenState extends State<DoctorPatientListScreen> with 
               const SizedBox(height: 14),
 
               // Notes
-              const Text('Notes cliniques', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              Text('Notes cliniques', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary)),
               const SizedBox(height: 8),
               TextField(
                 controller: notesController,
@@ -360,15 +367,16 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = color ?? AlloUrgenceTheme.primaryLight;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: active ? c : Colors.white,
+          color: active ? c : (isDark ? AlloUrgenceTheme.darkSurface : Colors.white),
           borderRadius: BorderRadius.circular(14),
-          border: active ? null : Border.all(color: AlloUrgenceTheme.divider),
+          border: active ? null : Border.all(color: isDark ? AlloUrgenceTheme.darkDivider : AlloUrgenceTheme.divider),
           boxShadow: active ? [BoxShadow(color: c.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))] : null,
         ),
         child: Row(
@@ -376,19 +384,19 @@ class _FilterChip extends StatelessWidget {
             Text(label, style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: active ? Colors.white : AlloUrgenceTheme.textSecondary,
+              color: active ? Colors.white : (isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary),
             )),
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
               decoration: BoxDecoration(
-                color: active ? Colors.white.withValues(alpha: 0.25) : AlloUrgenceTheme.surfaceVariant,
+                color: active ? Colors.white.withValues(alpha: 0.25) : (isDark ? AlloUrgenceTheme.darkSurfaceVariant : AlloUrgenceTheme.surfaceVariant),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text('$count', style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: active ? Colors.white : AlloUrgenceTheme.textTertiary,
+                color: active ? Colors.white : (isDark ? AlloUrgenceTheme.darkTextTertiary : AlloUrgenceTheme.textTertiary),
               )),
             ),
           ],
@@ -407,6 +415,7 @@ class _DoctorPatientCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AlloUrgenceTheme.getPriorityColor(ticket.effectivePriority);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
       onTap: onTap,
@@ -414,9 +423,10 @@ class _DoctorPatientCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [AlloUrgenceTheme.cardShadow],
+          border: isDark ? Border.all(color: AlloUrgenceTheme.darkDivider.withValues(alpha: 0.5)) : null,
         ),
         child: Row(
           children: [
@@ -446,7 +456,8 @@ class _DoctorPatientCard extends StatelessWidget {
                 children: [
                   Text(
                     ticket.patientFullName.isNotEmpty ? ticket.patientFullName : 'Patient',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -483,6 +494,115 @@ class _DoctorPatientCard extends StatelessWidget {
       case 'in_progress': return AlloUrgenceTheme.success;
       default: return AlloUrgenceTheme.textSecondary;
     }
+  }
+}
+
+// ── Doctor Drawer ───────────────────────────────────────────────
+class _DoctorDrawer extends StatelessWidget {
+  final AuthProvider auth;
+  const _DoctorDrawer({required this.auth});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Drawer(
+      backgroundColor: isDark ? AlloUrgenceTheme.darkBackground : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            // Avatar header
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                gradient: AlloUrgenceTheme.primaryGradient,
+                shape: BoxShape.circle,
+                boxShadow: [AlloUrgenceTheme.coloredShadow(AlloUrgenceTheme.primaryLight)],
+              ),
+              child: Center(
+                child: Text(
+                  auth.user?.prenom.isNotEmpty == true ? auth.user!.prenom[0].toUpperCase() : '?',
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Dr. ${auth.user?.nom ?? ''}',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
+            ),
+            Text(
+              auth.user?.email ?? '',
+              style: TextStyle(fontSize: 13, color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            Divider(color: isDark ? AlloUrgenceTheme.darkDivider : AlloUrgenceTheme.divider),
+            const SizedBox(height: 8),
+            // Menu items
+            _DrawerItem(icon: Icons.people_rounded, label: 'Liste des patients', selected: true,
+              onTap: () => Navigator.pop(context)),
+            _DrawerItem(icon: Icons.settings_rounded, label: 'Paramètres',
+              onTap: () => Navigator.pop(context)),
+            const Spacer(),
+            Divider(color: isDark ? AlloUrgenceTheme.darkDivider : AlloUrgenceTheme.divider),
+            _DrawerItem(icon: Icons.logout_rounded, label: 'Se déconnecter', isDestructive: true,
+              onTap: () async {
+                await auth.logout();
+                if (!context.mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false,
+                );
+              }),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final bool isDestructive;
+  final VoidCallback onTap;
+  const _DrawerItem({required this.icon, required this.label, this.selected = false, this.isDestructive = false, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isDestructive ? AlloUrgenceTheme.error : AlloUrgenceTheme.primaryLight;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? activeColor.withValues(alpha: 0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: isDestructive ? AlloUrgenceTheme.error : (selected ? activeColor : (isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary))),
+              const SizedBox(width: 14),
+              Text(label, style: TextStyle(
+                fontSize: 15, fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: isDestructive ? AlloUrgenceTheme.error : (isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

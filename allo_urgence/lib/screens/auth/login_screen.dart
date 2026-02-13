@@ -6,6 +6,7 @@ import 'register_screen.dart';
 import '../patient/home_screen.dart';
 import '../nurse/dashboard_screen.dart';
 import '../doctor/patient_list_screen.dart';
+import 'email_verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -59,6 +60,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     if (!mounted) return;
 
     if (success) {
+      // Block admin access on mobile
+      if (auth.user!.isAdmin) {
+        await auth.logout();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Les administrateurs doivent utiliser le panneau d\'administration web.'),
+              backgroundColor: AlloUrgenceTheme.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
       if (!auth.user!.emailVerified) {
         // Redirect to verification screen if email not verified
         Navigator.of(context).pushAndRemoveUntil(

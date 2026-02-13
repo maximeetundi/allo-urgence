@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/theme.dart';
 import '../patient/home_screen.dart';
+import 'login_screen.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
   const EmailVerificationScreen({super.key});
@@ -237,23 +238,23 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> with 
                       maxLength: 1,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black, // Explicit black for max contrast
+                      style: const TextStyle(
+                        color: Color(0xFF0F172A), // Always dark for max contrast
                         fontSize: 22, fontWeight: FontWeight.w700
                       ),
                       decoration: InputDecoration(
                         counterText: '',
                         filled: true,
                         fillColor: isDark 
-                            ? Colors.white.withValues(alpha: 0.06) 
-                            : Colors.white, // White background with border
+                            ? Colors.white.withValues(alpha: 0.1) 
+                            : const Color(0xFFF1F5F9), // Light grey, not white
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14), 
-                            borderSide: BorderSide(color: isDark ? Colors.transparent : Colors.grey.shade300)
+                            borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1), width: 1.5)
                         ),
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14), 
-                            borderSide: BorderSide(color: isDark ? Colors.transparent : Colors.grey.shade300)
+                            borderSide: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFCBD5E1), width: 1.5)
                         ),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14), 

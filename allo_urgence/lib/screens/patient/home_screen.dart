@@ -80,6 +80,20 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> with SingleTicker
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                     child: Row(
                       children: [
+                        Builder(
+                          builder: (ctx) => GestureDetector(
+                            onTap: () => Scaffold.of(ctx).openDrawer(),
+                            child: Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: isDark ? AlloUrgenceTheme.darkSurfaceVariant : AlloUrgenceTheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(Icons.menu_rounded, color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary, size: 22),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

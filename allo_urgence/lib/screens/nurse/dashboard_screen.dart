@@ -46,8 +46,10 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> with Single
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final queue = context.watch<QueueProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      drawer: _NurseDrawer(auth: auth),
       // backgroundColor follows theme
       body: SafeArea(
         child: RefreshIndicator(
@@ -64,21 +66,35 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> with Single
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                     child: Row(
                       children: [
+                        Builder(
+                          builder: (ctx) => GestureDetector(
+                            onTap: () => Scaffold.of(ctx).openDrawer(),
+                            child: Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: isDark ? AlloUrgenceTheme.darkSurfaceVariant : AlloUrgenceTheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(Icons.menu_rounded, color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary, size: 22),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 '👩‍⚕️ Bonjour, ${auth.user?.prenom ?? ''}',
-                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.3,
+                                  color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
                               ),
                               const SizedBox(height: 4),
                               Text('Tableau de bord infirmier',
-                                style: TextStyle(fontSize: 14, color: AlloUrgenceTheme.textSecondary)),
+                                style: TextStyle(fontSize: 14, color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary)),
                             ],
                           ),
                         ),
-                        _buildLogoutButton(auth),
                       ],
                     ),
                   ),
@@ -102,7 +118,8 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> with Single
                     padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
                     child: Row(
                       children: [
-                        const Text('File d\'attente', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                        Text('File d\'attente', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary)),
                         const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -159,25 +176,7 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> with Single
     );
   }
 
-  Widget _buildLogoutButton(AuthProvider auth) {
-    return GestureDetector(
-      onTap: () async {
-        await auth.logout();
-        if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false,
-        );
-      },
-      child: Container(
-        width: 44, height: 44,
-        decoration: BoxDecoration(
-          color: AlloUrgenceTheme.error.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Icon(Icons.logout_rounded, color: AlloUrgenceTheme.error, size: 20),
-      ),
-    );
-  }
+  // Removed: logout button now in drawer
 
   Widget _buildSummary(QueueProvider queue) {
     return Padding(
@@ -213,6 +212,7 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> with Single
     int selectedPriority = ticket.effectivePriority;
     final notesController = TextEditingController();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -220,9 +220,9 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> with Single
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Container(
           padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -238,7 +238,8 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> with Single
               const SizedBox(height: 20),
               Text(
                 'Triage — ${ticket.patientFullName}',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
               ),
               if (ticket.preTriageCategory != null)
                 Padding(
@@ -248,7 +249,8 @@ class _NurseDashboardScreenState extends State<NurseDashboardScreen> with Single
               const SizedBox(height: 20),
 
               // Priority selector
-              const Text('Priorité validée', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              Text('Priorité validée', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary)),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
@@ -329,12 +331,14 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [AlloUrgenceTheme.cardShadow],
+        border: isDark ? Border.all(color: AlloUrgenceTheme.darkDivider.withValues(alpha: 0.5)) : null,
       ),
       child: Column(
         children: [
@@ -347,8 +351,9 @@ class _SummaryCard extends StatelessWidget {
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          Text(label, style: TextStyle(fontSize: 11, color: AlloUrgenceTheme.textTertiary)),
+          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary)),
+          Text(label, style: TextStyle(fontSize: 11, color: isDark ? AlloUrgenceTheme.darkTextTertiary : AlloUrgenceTheme.textTertiary)),
         ],
       ),
     );
@@ -364,6 +369,7 @@ class _PatientTicketCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AlloUrgenceTheme.getPriorityColor(ticket.effectivePriority);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
       onTap: onTriage,
@@ -371,9 +377,10 @@ class _PatientTicketCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AlloUrgenceTheme.darkSurface : Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [AlloUrgenceTheme.cardShadow],
+          border: isDark ? Border.all(color: AlloUrgenceTheme.darkDivider.withValues(alpha: 0.5)) : null,
         ),
         child: Row(
           children: [
@@ -400,7 +407,8 @@ class _PatientTicketCard extends StatelessWidget {
                 children: [
                   Text(
                     ticket.patientFullName.isNotEmpty ? ticket.patientFullName : 'Patient',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
                   ),
                   const SizedBox(height: 2),
                   Row(
@@ -441,7 +449,8 @@ class _PatientTicketCard extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text('#${ticket.queuePosition}',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary)),
                 ),
               ),
             const SizedBox(width: 6),
@@ -461,5 +470,112 @@ class _PatientTicketCard extends StatelessWidget {
       case 'treated': return AlloUrgenceTheme.textTertiary;
       default: return AlloUrgenceTheme.textSecondary;
     }
+  }
+}
+
+// ── Nurse Drawer ────────────────────────────────────────────────
+class _NurseDrawer extends StatelessWidget {
+  final AuthProvider auth;
+  const _NurseDrawer({required this.auth});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Drawer(
+      backgroundColor: isDark ? AlloUrgenceTheme.darkBackground : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                gradient: AlloUrgenceTheme.primaryGradient,
+                shape: BoxShape.circle,
+                boxShadow: [AlloUrgenceTheme.coloredShadow(AlloUrgenceTheme.primaryLight)],
+              ),
+              child: Center(
+                child: Text(
+                  auth.user?.prenom.isNotEmpty == true ? auth.user!.prenom[0].toUpperCase() : '?',
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${auth.user?.prenom ?? ''} ${auth.user?.nom ?? ''}',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
+            ),
+            Text(
+              auth.user?.email ?? '',
+              style: TextStyle(fontSize: 13, color: isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            Divider(color: isDark ? AlloUrgenceTheme.darkDivider : AlloUrgenceTheme.divider),
+            const SizedBox(height: 8),
+            _NurseDrawerItem(icon: Icons.dashboard_rounded, label: 'Dashboard', selected: true,
+              onTap: () => Navigator.pop(context)),
+            _NurseDrawerItem(icon: Icons.settings_rounded, label: 'Paramètres',
+              onTap: () => Navigator.pop(context)),
+            const Spacer(),
+            Divider(color: isDark ? AlloUrgenceTheme.darkDivider : AlloUrgenceTheme.divider),
+            _NurseDrawerItem(icon: Icons.logout_rounded, label: 'Se déconnecter', isDestructive: true,
+              onTap: () async {
+                await auth.logout();
+                if (!context.mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false,
+                );
+              }),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NurseDrawerItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final bool isDestructive;
+  final VoidCallback onTap;
+  const _NurseDrawerItem({required this.icon, required this.label, this.selected = false, this.isDestructive = false, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isDestructive ? AlloUrgenceTheme.error : AlloUrgenceTheme.primaryLight;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? activeColor.withValues(alpha: 0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: isDestructive ? AlloUrgenceTheme.error : (selected ? activeColor : (isDark ? AlloUrgenceTheme.darkTextSecondary : AlloUrgenceTheme.textSecondary))),
+              const SizedBox(width: 14),
+              Text(label, style: TextStyle(
+                fontSize: 15, fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: isDestructive ? AlloUrgenceTheme.error : (isDark ? Colors.white : AlloUrgenceTheme.textPrimary),
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

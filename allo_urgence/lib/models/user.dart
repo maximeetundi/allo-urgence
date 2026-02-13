@@ -69,4 +69,5 @@ class User {
   bool get isPatient => role == 'patient';
   bool get isNurse => role == 'nurse';
   bool get isDoctor => role == 'doctor';
+  bool get isAdmin => role == 'admin';
 }

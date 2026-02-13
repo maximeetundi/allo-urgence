@@ -25,7 +25,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
 export const login = (email: string, password: string) =>
   fetchApi('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, client: 'admin' }),
   });
 
 // Users

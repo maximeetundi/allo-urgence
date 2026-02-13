@@ -94,6 +94,7 @@ class AuthProvider extends ChangeNotifier {
       final data = await apiService.post('/auth/login', {
         'email': email,
         'password': password,
+        'client': 'mobile',
       });
 
       _token = data['token'];

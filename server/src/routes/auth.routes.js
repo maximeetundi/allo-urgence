@@ -201,11 +201,33 @@ router.put('/update-email', authenticateToken, validate(updateEmailSchema), asyn
 // ── POST /api/auth/login ────────────────────────────────────────
 router.post('/login', authLoginLimiter, validate(loginSchema), async (req, res, next) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, client } = req.body;
 
         const user = await db.findOne('users', { email });
         if (!user || !bcrypt.compareSync(password, user.password_hash)) {
             return res.status(401).json({ error: 'Identifiants incorrects' });
+        }
+
+        // Role restriction based on client
+        if (client === 'admin') {
+            if (user.role !== 'admin') {
+                // Return same error as invalid credentials for security
+                return res.status(401).json({ error: 'Identifiants incorrects' });
+            }
+        } else if (client === 'mobile') {
+            if (user.role === 'admin') {
+                return res.status(401).json({ error: 'Identifiants incorrects' });
+            }
+        }
+        // If no client specified, fallback to permissive or default? 
+        // For now, let's assume if no client is sent, we default to mobile behavior (block admin) 
+        // or just leave it for backward compatibility until all clients are updated.
+        // Given the requirement "bloquer des 2 cotes", let's enforce it.
+        // If client is missing, we can assume it's mobile (legacy).
+        else {
+            if (user.role === 'admin') {
+                return res.status(401).json({ error: 'Identifiants incorrects' });
+            }
         }
 
         const token = jwt.sign(
