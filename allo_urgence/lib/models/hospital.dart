@@ -5,6 +5,7 @@ class Hospital {
   final double? latitude;
   final double? longitude;
   final int capacity;
+  final String? imageUrl;
 
   Hospital({
     required this.id,
@@ -13,6 +14,7 @@ class Hospital {
     this.latitude,
     this.longitude,
     this.capacity = 100,
+    this.imageUrl,
   });
 
   factory Hospital.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class Hospital {
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
       capacity: json['capacity'] ?? 100,
+      imageUrl: json['image_url'],
     );
   }
 }

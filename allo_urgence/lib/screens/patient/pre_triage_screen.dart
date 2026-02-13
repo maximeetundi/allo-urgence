@@ -528,13 +528,19 @@ class _HospitalCard extends StatelessWidget {
         ),
         child: Row(
           children: [
+          children: [
             Container(
-              width: 48, height: 48,
+              width: 56, height: 56,
               decoration: BoxDecoration(
-                gradient: AlloUrgenceTheme.primaryGradient,
+                color: AlloUrgenceTheme.primaryLight.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
+                image: hospital.imageUrl != null && hospital.imageUrl!.isNotEmpty
+                  ? DecorationImage(image: NetworkImage(hospital.imageUrl!), fit: BoxFit.cover)
+                  : null,
               ),
-              child: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 22),
+              child: hospital.imageUrl == null || hospital.imageUrl!.isEmpty
+                ? const Icon(Icons.local_hospital_rounded, color: AlloUrgenceTheme.primaryLight, size: 28)
+                : null,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -542,8 +548,8 @@ class _HospitalCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(hospital.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 2),
-                  Text(hospital.address, style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text(hospital.address, style: TextStyle(fontSize: 12, color: AlloUrgenceTheme.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),

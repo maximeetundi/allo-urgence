@@ -4,6 +4,7 @@ require('dotenv').config();
 const { validateEnvVars, config } = require('./config/env');
 validateEnvVars();
 
+const path = require('path');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -57,6 +58,9 @@ app.use(express.json({ limit: '10mb' }));
 // Rate limiting
 app.use('/api/', apiLimiter);
 
+// Serve uploads statically
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Performance monitoring
 app.use((req, res, next) => {
     const start = Date.now();
@@ -85,6 +89,7 @@ app.use('/api/doctor', require('./routes/doctor.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/qr', require('./routes/qr.routes'));
 app.use('/api/share', require('./routes/share.routes'));
+app.use('/api/upload', require('./routes/upload.routes'));
 
 // Health
 app.get('/api/health', (req, res) => {

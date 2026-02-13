@@ -148,6 +148,8 @@ async function initDatabase() {
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT false`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS checked_in_by UUID REFERENCES users(id)`);
+    await db.query(`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS image_url TEXT`);
+    await db.query(`ALTER TABLE hospitals ADD COLUMN IF NOT EXISTS image_url TEXT`);
 
     // ── Create verification_attempts table for OTP rate limiting ───
     await db.query(`
@@ -186,16 +188,19 @@ async function initDatabase() {
         name: 'Hôpital Général de Montréal',
         address: '1650 Avenue Cedar, Montréal, QC H3G 1A4',
         latitude: 45.4735, longitude: -73.5920, capacity: 150,
+        image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Montreal_General_Hospital.jpg/800px-Montreal_General_Hospital.jpg',
       });
       await db.insert('hospitals', {
         name: 'CHUM — Centre Hospitalier de l\'Université de Montréal',
         address: '1051 Rue Sanguinet, Montréal, QC H2X 3E4',
         latitude: 45.5115, longitude: -73.5572, capacity: 200,
+        image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/CHUM_Phase_2.jpg/800px-CHUM_Phase_2.jpg',
       });
       await db.insert('hospitals', {
         name: 'Hôpital Sainte-Justine',
         address: '3175 Chemin de la Côte-Sainte-Catherine, Montréal, QC H3T 1C5',
         latitude: 45.5015, longitude: -73.6191, capacity: 120,
+        image_url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/H%C3%B4pital_Sainte-Justine_2017.jpg/800px-H%C3%B4pital_Sainte-Justine_2017.jpg',
       });
     }
 

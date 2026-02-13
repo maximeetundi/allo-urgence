@@ -108,7 +108,7 @@ router.get('/hospitals', authenticateToken, requireRole('admin'), async (req, re
 // ── POST /api/admin/hospitals ───────────────────────────────────
 router.post('/hospitals', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
-    const { name, address, latitude, longitude, capacity } = req.body;
+    const { name, address, latitude, longitude, capacity, image_url } = req.body;
     if (!name || !address) return res.status(400).json({ error: 'Nom et adresse requis' });
 
     const hospital = await db.insert('hospitals', {
@@ -116,6 +116,7 @@ router.post('/hospitals', authenticateToken, requireRole('admin'), async (req, r
       latitude: latitude || null,
       longitude: longitude || null,
       capacity: capacity || 100,
+      image_url: image_url || null,
     });
 
     auditLog('hospital_created', req.user.id, { hospitalId: hospital.id });
@@ -129,13 +130,14 @@ router.post('/hospitals', authenticateToken, requireRole('admin'), async (req, r
 // ── PATCH /api/admin/hospitals/:id ──────────────────────────────
 router.patch('/hospitals/:id', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
-    const { name, address, latitude, longitude, capacity } = req.body;
+    const { name, address, latitude, longitude, capacity, image_url } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = name;
     if (address !== undefined) updates.address = address;
     if (latitude !== undefined) updates.latitude = latitude;
     if (longitude !== undefined) updates.longitude = longitude;
     if (capacity !== undefined) updates.capacity = capacity;
+    if (image_url !== undefined) updates.image_url = image_url;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'Aucune modification' });

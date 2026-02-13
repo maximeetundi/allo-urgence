@@ -13,6 +13,7 @@ interface Hospital {
   latitude: number;
   longitude: number;
   capacity: number;
+  image_url?: string;
   created_at: string;
 }
 
@@ -24,7 +25,7 @@ export default function HospitalsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    name: '', address: '', latitude: '', longitude: '', capacity: '',
+    name: '', address: '', latitude: '', longitude: '', capacity: '', image_url: '',
   });
 
   useEffect(() => { loadHospitals(); }, []);
@@ -49,6 +50,7 @@ export default function HospitalsPage() {
       latitude: parseFloat(formData.latitude),
       longitude: parseFloat(formData.longitude),
       capacity: parseInt(formData.capacity),
+      image_url: formData.image_url,
     };
     try {
       if (editingHospital) {
@@ -58,7 +60,7 @@ export default function HospitalsPage() {
       }
       setShowModal(false);
       setEditingHospital(null);
-      setFormData({ name: '', address: '', latitude: '', longitude: '', capacity: '' });
+      setFormData({ name: '', address: '', latitude: '', longitude: '', capacity: '', image_url: '' });
       loadHospitals();
     } catch (error: any) {
       alert(error.message || 'Erreur lors de la sauvegarde');
@@ -75,6 +77,7 @@ export default function HospitalsPage() {
       latitude: hospital.latitude?.toString() || '',
       longitude: hospital.longitude?.toString() || '',
       capacity: hospital.capacity?.toString() || '',
+      image_url: hospital.image_url || '',
     });
     setShowModal(true);
   };
@@ -91,7 +94,7 @@ export default function HospitalsPage() {
 
   const openCreate = () => {
     setEditingHospital(null);
-    setFormData({ name: '', address: '', latitude: '', longitude: '', capacity: '' });
+    setFormData({ name: '', address: '', latitude: '', longitude: '', capacity: '', image_url: '' });
     setShowModal(true);
   };
 
@@ -142,8 +145,13 @@ export default function HospitalsPage() {
             className={`card group animate-slide-up stagger-${Math.min(i + 1, 5)}`}
           >
             <div className="flex items-start justify-between">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-100 to-indigo-100 flex items-center justify-center">
-                <Building2 className="text-primary-600" size={22} />
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-100 to-indigo-100 flex items-center justify-center overflow-hidden relative">
+                {hospital.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={hospital.image_url} alt={hospital.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 className="text-primary-600" size={22} />
+                )}
               </div>
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
@@ -239,9 +247,54 @@ export default function HospitalsPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5 ml-0.5">Capacité</label>
                 <input type="number" required value={formData.capacity}
                   onChange={e => setFormData({ ...formData, capacity: e.target.value })} className="input" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5 ml-0.5">Logo de l'hôpital</label>
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+
+                      const formData = new FormData();
+                      formData.append('image', file);
+
+                      try {
+                        // Note: We need to use native fetch or axios because our api wrapper assumes JSON
+                        const token = localStorage.getItem('admin_token');
+                        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.allo-urgence.tech-afm.com'; /* Fallback hardcoded for safety */
+
+                        const res = await fetch(`${API_URL}/api/upload/image`, {
+                          method: 'POST',
+                          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                          body: formData
+                        });
+
+                        if (!res.ok) throw new Error('Upload failed');
+
+                        const data = await res.json();
+                        setFormData(prev => ({ ...prev, image_url: data.url }));
+                      } catch (err) {
+                        alert('Erreur lors de l\'upload de l\'image');
+                        console.error(err);
+                      }
+                    }}
+                    className="input flex-1 text-xs file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                  />
+                </div>
+                <input type="url" value={formData.image_url} placeholder="ou URL https://..."
+                  onChange={e => setFormData({ ...formData, image_url: e.target.value })} className="input mt-2" />
+                {formData.image_url && (
+                  <div className="mt-2 w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={formData.image_url} alt="Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
