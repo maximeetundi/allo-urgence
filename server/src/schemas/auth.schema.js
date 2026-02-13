@@ -21,15 +21,15 @@ const registerSchema = Joi.object({
         'string.max': 'Le prénom ne peut pas dépasser 100 caractères',
         'any.required': 'Prénom requis',
     }),
-    telephone: Joi.string().pattern(/^[0-9+\-\s()]+$/).optional().allow('').messages({
+    telephone: Joi.string().pattern(/^[0-9+\-\s()]+$/).optional().allow(null, '').messages({
         'string.pattern.base': 'Numéro de téléphone invalide',
     }),
-    ramq_number: Joi.string().optional().allow(''),
-    date_naissance: Joi.date().optional().allow(''),
-    contact_urgence: Joi.string().optional().allow(''),
-    allergies: Joi.string().optional().allow(''),
-    conditions_medicales: Joi.string().optional().allow(''),
-    medicaments: Joi.string().optional().allow(''),
+    ramq_number: Joi.string().optional().allow(null, ''),
+    date_naissance: Joi.date().optional().allow(null, ''),
+    contact_urgence: Joi.string().optional().allow(null, ''),
+    allergies: Joi.string().optional().allow(null, ''),
+    conditions_medicales: Joi.string().optional().allow(null, ''),
+    medicaments: Joi.string().optional().allow(null, ''),
 });
 
 const loginSchema = Joi.object({

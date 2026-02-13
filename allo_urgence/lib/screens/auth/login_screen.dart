@@ -250,36 +250,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       ),
                       const SizedBox(height: 28),
 
-                      // Demo credentials
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.05) : AlloUrgenceTheme.surfaceVariant,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : AlloUrgenceTheme.divider),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Comptes démo',
-                              style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.4) : AlloUrgenceTheme.textTertiary, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1),
-                            ),
-                            const SizedBox(height: 10),
-                            _DemoAccount(emoji: '👤', email: 'patient@test.ca', password: 'patient123', onTap: () {
-                              _emailController.text = 'patient@test.ca';
-                              _passwordController.text = 'patient123';
-                            }),
-                            _DemoAccount(emoji: '👩‍⚕️', email: 'nurse@allourgence.ca', password: 'nurse123', onTap: () {
-                              _emailController.text = 'nurse@allourgence.ca';
-                              _passwordController.text = 'nurse123';
-                            }),
-                            _DemoAccount(emoji: '👨‍⚕️', email: 'doctor@allourgence.ca', password: 'doctor123', onTap: () {
-                              _emailController.text = 'doctor@allourgence.ca';
-                              _passwordController.text = 'doctor123';
-                            }),
-                          ],
-                        ),
-                      ),
+
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -359,38 +330,4 @@ class _GlassInput extends StatelessWidget {
   }
 }
 
-// ── Demo Account Button ─────────────────────────────────────────
-class _DemoAccount extends StatelessWidget {
-  final String emoji;
-  final String email;
-  final String password;
-  final VoidCallback onTap;
 
-  const _DemoAccount({required this.emoji, required this.email, required this.password, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
-        child: Row(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 16)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '$email / $password',
-                style: TextStyle(fontSize: 12, color: isDark ? Colors.white.withValues(alpha: 0.45) : AlloUrgenceTheme.textTertiary, fontFamily: 'monospace'),
-              ),
-            ),
-            Icon(Icons.touch_app_rounded, size: 14, color: isDark ? Colors.white.withValues(alpha: 0.2) : AlloUrgenceTheme.textTertiary.withValues(alpha: 0.5)),
-          ],
-        ),
-      ),
-    );
-  }
-}
