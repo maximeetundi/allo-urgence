@@ -108,6 +108,44 @@ class Database {
     return result.rows;
   }
 
+  async findWithPagination(table, { page = 1, limit = 20, search = '', searchColumns = [], orderBy = 'id DESC' }) {
+    const offset = (page - 1) * limit;
+    const values = [];
+    let query = `SELECT * FROM ${table}`;
+    let countQuery = `SELECT COUNT(*) as total FROM ${table}`;
+
+    let whereClause = '';
+    if (search && searchColumns.length > 0) {
+      whereClause = ' WHERE ' + searchColumns.map((col, i) => `${col} ILIKE $${i + 1}`).join(' OR ');
+      values.push(...searchColumns.map(() => `%${search}%`));
+    }
+
+    query += whereClause;
+    countQuery += whereClause;
+
+    // Order By
+    query += ` ORDER BY ${orderBy}`;
+
+    // Pagination
+    query += ` LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
+    values.push(limit, offset);
+
+    const [rowsResult, countResult] = await Promise.all([
+      this.query(query, values),
+      this.query(countQuery, values.slice(0, values.length - 2)) // Remove limit/offset for count
+    ]);
+
+    return {
+      data: rowsResult.rows,
+      meta: {
+        total: parseInt(countResult.rows[0].total),
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(parseInt(countResult.rows[0].total) / limit)
+      }
+    };
+  }
+
   async update(table, id, data) {
     const columns = Object.keys(data);
     const values = Object.values(data);
