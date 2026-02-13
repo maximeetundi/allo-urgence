@@ -56,8 +56,7 @@ class _TicketScreenState extends State<TicketScreen> with SingleTickerProviderSt
            Navigator.pop(context); // Close drawer
            // Navigate to home with index
            Navigator.of(context).pushAndRemoveUntil(
-             MaterialPageRoute(builder: (_) => const PatientHomeScreen()), // This isn't right, HomeScreen is a fragment
-             // We need to go to PatientMainScreen with index
+             MaterialPageRoute(builder: (_) => const PatientMainScreen()),
              (_) => false,
            );
            // Actually, easiest is just pop until we hit MainScreen if we are there?

@@ -34,11 +34,67 @@ class _PreTriageScreenState extends State<PreTriageScreen> with SingleTickerProv
   void initState() {
     super.initState();
     _animController = AnimationController(
-// ... (existing initState content)
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    )..forward();
     _loadData();
   }
 
-// ... (existing helper methods)
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final data = await apiService.get('/hospitals');
+      if (!mounted) return;
+      setState(() {
+        _hospitals = (data['hospitals'] as List).map((h) => Hospital.fromJson(h)).toList();
+      });
+    } catch (e) {
+      debugPrint('❌ Failed to load hospitals: $e');
+    }
+    if (!mounted) return;
+    final ticket = context.read<TicketProvider>();
+    await ticket.loadTriageCategories();
+  }
+
+  void _goToStep(int step) {
+    _animController.reset();
+    setState(() => _step = step);
+    _animController.forward();
+  }
+
+  Future<void> _createTicket() async {
+    if (_selectedHospital == null || _selectedCategory == null) return;
+    setState(() => _loading = true);
+
+    final ticket = context.read<TicketProvider>();
+    final success = await ticket.createTicket(
+      hospitalId: _selectedHospital!.id,
+      categoryId: _selectedCategory!.id,
+      triageAnswers: {
+        'pain_level': _painLevel.round(),
+        'breathing': _breathingDifficulty,
+        'symptom_duration': _symptomDuration,
+      },
+    );
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (success && ticket.activeTicket != null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => TicketScreen(ticketId: ticket.activeTicket!.id)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ticket.error ?? 'Erreur'), backgroundColor: AlloUrgenceTheme.error),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

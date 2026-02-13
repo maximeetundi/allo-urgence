@@ -34,7 +34,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> register({
+  Future<Map<String, dynamic>> register({
     required String email,
     required String password,
     required String nom,
@@ -76,12 +76,12 @@ class AuthProvider extends ChangeNotifier {
 
       _loading = false;
       notifyListeners();
-      return true;
+      return {'success': true, 'message': data['message']};
     } catch (e) {
       _error = e.toString();
       _loading = false;
       notifyListeners();
-      return false;
+      return {'success': false, 'message': _error};
     }
   }
 

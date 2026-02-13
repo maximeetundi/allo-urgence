@@ -238,20 +238,24 @@ async function initDatabase() {
       await db.insert('users', {
         role: 'admin', email: 'admin@allourgence.ca', password_hash: hash('admin123'),
         nom: 'Admin', prenom: 'Super', telephone: '514-555-0000',
+        email_verified: true,
       });
       await db.insert('users', {
         role: 'nurse', email: 'nurse@allourgence.ca', password_hash: hash('nurse123'),
         nom: 'Tremblay', prenom: 'Marie', telephone: '514-555-0101',
+        email_verified: true,
       });
       await db.insert('users', {
         role: 'doctor', email: 'doctor@allourgence.ca', password_hash: hash('doctor123'),
         nom: 'Gagnon', prenom: 'Jean', telephone: '514-555-0202',
+        email_verified: true,
       });
       await db.insert('users', {
         role: 'patient', email: 'patient@test.ca', password_hash: hash('patient123'),
         nom: 'Bouchard', prenom: 'Luc', telephone: '514-555-0303',
         date_naissance: '1985-05-15', ramq_number: 'BOUL85051599',
         contact_urgence: 'Sophie Bouchard — 514-555-0304',
+        email_verified: true,
       });
     }
 

@@ -7,7 +7,8 @@ import '../patient/home_screen.dart';
 import 'login_screen.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
-  const EmailVerificationScreen({super.key});
+  final String? message;
+  const EmailVerificationScreen({super.key, this.message});
 
   @override
   State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
@@ -29,6 +30,18 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> with 
     _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
+
+    if (widget.message != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.message!),
+            backgroundColor: AlloUrgenceTheme.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      });
+    }
   }
 
   @override

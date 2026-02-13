@@ -44,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
-    final success = await auth.register(
+    final result = await auth.register(
       email: _emailC.text.trim(),
       password: _passwordC.text,
       nom: _nomC.text.trim(),
@@ -53,9 +53,9 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
     );
 
     if (!mounted) return;
-    if (success) {
+    if (result['success']) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const EmailVerificationScreen()),
+        MaterialPageRoute(builder: (_) => EmailVerificationScreen(message: result['message'])),
         (_) => false,
       );
     } else {
