@@ -79,7 +79,7 @@ class Database {
 
     // ✅ SECURITY: Whitelist allowed columns for ORDER BY
     if (orderBy) {
-      const allowedColumns = ['id', 'created_at', 'updated_at', 'priority', 'status', 'nom', 'prenom', 'email'];
+      const allowedColumns = ['id', 'created_at', 'updated_at', 'priority', 'status', 'nom', 'prenom', 'email', 'name'];
       const parts = orderBy.trim().split(/\s+/);
       const column = parts[0];
       const direction = (parts[1] || 'ASC').toUpperCase();
