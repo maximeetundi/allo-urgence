@@ -835,6 +835,14 @@ class _NurseDrawer extends StatelessWidget {
               },
             ),
             _NurseDrawerItem(
+              icon: Icons.settings_rounded,
+              label: 'Paramètres',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+              },
+            ),
+            _NurseDrawerItem(
               icon: Icons.warning_rounded,
               label: 'Alertes critiques',
               badge: nurse.alerts.isNotEmpty ? '${nurse.alerts.length}' : null,
