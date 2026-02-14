@@ -33,7 +33,17 @@ class NurseService {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to load patients');
+      String errorMessage = 'Erreur ${response.statusCode}';
+      try {
+        final errorBody = json.decode(response.body);
+        if (errorBody is Map && errorBody.containsKey('error')) {
+          errorMessage = errorBody['error'];
+        }
+      } catch (_) {
+        // Fallback to raw body if not JSON
+        errorMessage += ': ${response.body}';
+      }
+      throw Exception(errorMessage);
     }
   }
 

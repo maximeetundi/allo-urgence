@@ -35,7 +35,16 @@ class DoctorService {
           .map((p) => Ticket.fromJson(p))
           .toList();
     } else {
-      throw Exception('Failed to load patients');
+      String errorMessage = 'Erreur ${response.statusCode}';
+      try {
+        final errorBody = json.decode(response.body);
+        if (errorBody is Map && errorBody.containsKey('error')) {
+          errorMessage = errorBody['error'];
+        }
+      } catch (_) {
+        errorMessage += ': ${response.body}';
+      }
+      throw Exception(errorMessage);
     }
   }
 

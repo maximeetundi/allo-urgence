@@ -8,7 +8,7 @@ const { sendPriorityChangedNotification } = require('../services/notification.se
 
 // ── GET /api/nurse/patients ────────────────────────────────────
 // Liste des patients pour infirmier (triée par priorité)
-router.get('/patients', authenticateToken, requireRole(['nurse', 'admin']), async (req, res) => {
+router.get('/patients', authenticateToken, requireRole('nurse', 'admin'), async (req, res) => {
     try {
         const { hospital_id, status, priority } = req.query;
 
@@ -112,7 +112,7 @@ router.get('/patients', authenticateToken, requireRole(['nurse', 'admin']), asyn
 
 // ── POST /api/nurse/triage/validate ────────────────────────────
 // Validation rapide du triage par infirmier
-router.post('/triage/validate', authenticateToken, requireRole(['nurse', 'admin']), async (req, res) => {
+router.post('/triage/validate', authenticateToken, requireRole('nurse', 'admin'), async (req, res) => {
     try {
         const { ticket_id, validated_priority, assigned_room, justification } = req.body;
 
@@ -204,7 +204,7 @@ router.post('/triage/validate', authenticateToken, requireRole(['nurse', 'admin'
 
 // ── GET /api/nurse/rooms/available ─────────────────────────────
 // Liste des salles disponibles
-router.get('/rooms/available', authenticateToken, requireRole(['nurse', 'admin']), async (req, res) => {
+router.get('/rooms/available', authenticateToken, requireRole('nurse', 'admin'), async (req, res) => {
     try {
         const { hospital_id } = req.query;
 
@@ -247,7 +247,7 @@ router.get('/rooms/available', authenticateToken, requireRole(['nurse', 'admin']
 
 // ── GET /api/nurse/alerts ──────────────────────────────────────
 // Alertes critiques actives
-router.get('/alerts', authenticateToken, requireRole(['nurse', 'admin']), async (req, res) => {
+router.get('/alerts', authenticateToken, requireRole('nurse', 'admin'), async (req, res) => {
     try {
         const { hospital_id } = req.query;
 
@@ -279,7 +279,7 @@ router.get('/alerts', authenticateToken, requireRole(['nurse', 'admin']), async 
 
 // ── POST /api/nurse/alert/acknowledge ──────────────────────────
 // Marquer une alerte comme prise en charge
-router.post('/alert/acknowledge', authenticateToken, requireRole(['nurse', 'admin']), async (req, res) => {
+router.post('/alert/acknowledge', authenticateToken, requireRole('nurse', 'admin'), async (req, res) => {
     try {
         const { ticket_id } = req.body;
 

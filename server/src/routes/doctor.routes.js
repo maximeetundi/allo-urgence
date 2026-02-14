@@ -7,7 +7,7 @@ const { sendStatusChangedNotification } = require('../services/notification.serv
 
 // ── GET /api/doctor/patients ───────────────────────────────────
 // Liste des patients pour médecin (triée automatiquement)
-router.get('/patients', authenticateToken, requireRole(['doctor', 'admin']), async (req, res) => {
+router.get('/patients', authenticateToken, requireRole('doctor', 'admin'), async (req, res) => {
     try {
         const { hospital_id, status } = req.query;
 
@@ -84,7 +84,7 @@ router.get('/patients', authenticateToken, requireRole(['doctor', 'admin']), asy
 
 // ── GET /api/doctor/patient/:id ────────────────────────────────
 // Détails complets d'un patient
-router.get('/patient/:id', authenticateToken, requireRole(['doctor', 'admin']), async (req, res) => {
+router.get('/patient/:id', authenticateToken, requireRole('doctor', 'admin'), async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -146,7 +146,7 @@ router.get('/patient/:id', authenticateToken, requireRole(['doctor', 'admin']), 
 
 // ── POST /api/doctor/patient/:id/status ────────────────────────
 // Changer le statut d'un patient
-router.post('/patient/:id/status', authenticateToken, requireRole(['doctor', 'admin']), async (req, res) => {
+router.post('/patient/:id/status', authenticateToken, requireRole('doctor', 'admin'), async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
@@ -195,7 +195,7 @@ router.post('/patient/:id/status', authenticateToken, requireRole(['doctor', 'ad
 
 // ── POST /api/doctor/patient/:id/notes ─────────────────────────
 // Ajouter une note médicale
-router.post('/patient/:id/notes', authenticateToken, requireRole(['doctor', 'admin']), async (req, res) => {
+router.post('/patient/:id/notes', authenticateToken, requireRole('doctor', 'admin'), async (req, res) => {
     try {
         const { id } = req.params;
         const { content, type } = req.body;
@@ -231,7 +231,7 @@ router.post('/patient/:id/notes', authenticateToken, requireRole(['doctor', 'adm
 
 // ── GET /api/doctor/templates ──────────────────────────────────
 // Templates de notes prédéfinies
-router.get('/templates', authenticateToken, requireRole(['doctor', 'admin']), async (req, res) => {
+router.get('/templates', authenticateToken, requireRole('doctor', 'admin'), async (req, res) => {
     try {
         const templates = [
             {
