@@ -138,6 +138,7 @@ async function initDatabase() {
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code VARCHAR(6)`);
     await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires_at TIMESTAMPTZ`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT false`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN DEFAULT false`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS triage_answers JSONB`);
     await db.query(`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS estimated_priority INTEGER CHECK (estimated_priority BETWEEN 1 AND 5)`);
@@ -290,6 +291,23 @@ async function initDatabase() {
         contact_urgence: 'Sophie Bouchard — 514-555-0304',
         email_verified: true,
       });
+    }
+
+    // ── Associate staff with hospitals (New) ──────────────────────
+    console.log('🔗 Association du personnel aux hôpitaux...');
+    const hospitals = (await db.query('SELECT id FROM hospitals ORDER BY created_at ASC LIMIT 2')).rows;
+    const nurse = await db.findOne('users', { email: 'nurse@allourgence.ca' });
+    const doctor = await db.findOne('users', { email: 'doctor@allourgence.ca' });
+
+    if (hospitals.length >= 2 && nurse && doctor) {
+      // Link nurse to first 2 hospitals
+      await db.query('INSERT INTO hospital_staff (user_id, hospital_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [nurse.id, hospitals[0].id]);
+      await db.query('INSERT INTO hospital_staff (user_id, hospital_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [nurse.id, hospitals[1].id]);
+
+      // Link doctor to first 2 hospitals
+      await db.query('INSERT INTO hospital_staff (user_id, hospital_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [doctor.id, hospitals[0].id]);
+      await db.query('INSERT INTO hospital_staff (user_id, hospital_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [doctor.id, hospitals[1].id]);
+      console.log('   ✅ Personnel associé aux 2 premiers hôpitaux');
     }
 
     console.log('');

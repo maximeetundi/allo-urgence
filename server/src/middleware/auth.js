@@ -20,6 +20,14 @@ async function authenticateToken(req, res, next) {
 
         req.user = jwt.verify(token, JWT_SECRET);
         req.token = token; // Attach token for logout
+
+        // Basic suspension check (optional optimization: cache this or rely on short-lived tokens, 
+        // but for strict security we check DB).
+        const user = await db.findById('users', req.user.id);
+        if (!user || user.is_suspended) {
+            return res.status(403).json({ error: 'Compte suspendu' });
+        }
+
         next();
     } catch (err) {
         return res.status(403).json({ error: 'Token invalide ou expiré' });

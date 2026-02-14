@@ -6,6 +6,8 @@ import '../../providers/queue_provider.dart';
 import '../../config/theme.dart';
 import '../../models/ticket.dart';
 import '../auth/login_screen.dart';
+import '../common/settings_screen.dart';
+import '../common/notifications_screen.dart';
 
 class DoctorPatientListScreen extends StatefulWidget {
   const DoctorPatientListScreen({super.key});
@@ -772,8 +774,28 @@ class _DoctorDrawer extends StatelessWidget {
             Divider(color: isDark ? AlloUrgenceTheme.darkDivider : AlloUrgenceTheme.divider),
             const SizedBox(height: 8),
             // Menu items
-            _DrawerItem(icon: Icons.people_rounded, label: 'Liste des patients', selected: true,
-              onTap: () => Navigator.pop(context)),
+            _DrawerItem(
+              icon: Icons.people_rounded, 
+              label: 'Liste des patients', 
+              selected: true,
+              onTap: () => Navigator.pop(context),
+            ),
+            _DrawerItem(
+              icon: Icons.notifications_rounded, 
+              label: 'Notifications', 
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+              },
+            ),
+            _DrawerItem(
+              icon: Icons.settings_rounded, 
+              label: 'Paramètres', 
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+              },
+            ),
             const Spacer(),
             Divider(color: isDark ? AlloUrgenceTheme.darkDivider : AlloUrgenceTheme.divider),
             _DrawerItem(icon: Icons.logout_rounded, label: 'Se déconnecter', isDestructive: true,

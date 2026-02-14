@@ -231,6 +231,60 @@ async function sendStatusChangedNotification(ticket, newStatus) {
     return sendNotification(ticket.patient_id, notification);
 }
 
+/**
+ * Notify all staff (nurses, doctors) of a hospital
+ */
+async function notifyHospitalStaff(hospitalId, title, body, data = {}) {
+    if (!firebaseInitialized) return;
+
+    try {
+        // Get all staff user IDs for this hospital
+        const staff = await db.query(
+            `SELECT user_id FROM hospital_staff WHERE hospital_id = $1`,
+            [hospitalId]
+        );
+
+        if (staff.rows.length === 0) return;
+
+        const userIds = staff.rows.map(r => r.user_id);
+
+        // Get tokens for these users
+        const tokensResult = await db.query(
+            `SELECT token FROM device_tokens WHERE user_id = ANY($1) AND last_used > NOW() - INTERVAL '30 days'`,
+            [userIds]
+        );
+
+        if (tokensResult.rows.length === 0) return;
+
+        const tokens = tokensResult.rows.map(r => r.token);
+
+        // Prepare message
+        const message = {
+            notification: { title, body },
+            data,
+            tokens,
+            android: {
+                priority: 'high',
+                notification: { sound: 'default', channelId: 'allo_urgence_staff' },
+            },
+            apns: {
+                payload: { aps: { sound: 'default', badge: 1 } },
+            },
+        };
+
+        const response = await admin.messaging().sendEachForMultitoken(message);
+        logger.info('Staff notification sent', {
+            hospitalId,
+            success: response.successCount,
+            failure: response.failureCount
+        });
+
+    } catch (err) {
+        logger.error('Staff notification error', { error: err.message });
+        // Don't throw, just log
+    }
+}
+
 module.exports = {
     registerDeviceToken,
     sendNotification,
@@ -238,4 +292,5 @@ module.exports = {
     sendPresentYourselfNotification,
     sendPriorityChangedNotification,
     sendStatusChangedNotification,
+    notifyHospitalStaff,
 };

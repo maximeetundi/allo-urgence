@@ -127,7 +127,7 @@ class _HistoryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ticket.hospital?.name ?? 'Hôpital inconnu',
+                      ticket.hospitalName ?? 'Hôpital inconnu',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,

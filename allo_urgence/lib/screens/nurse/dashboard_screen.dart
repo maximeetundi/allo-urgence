@@ -5,6 +5,8 @@ import '../../providers/nurse_provider.dart';
 import '../../config/theme.dart';
 import '../../models/ticket.dart';
 import '../auth/login_screen.dart';
+import '../common/settings_screen.dart';
+import '../common/notifications_screen.dart';
 
 class NurseDashboardScreen extends StatefulWidget {
   const NurseDashboardScreen({super.key});
@@ -817,8 +819,21 @@ class _NurseDrawer extends StatelessWidget {
             const SizedBox(height: 24),
             Divider(color: isDark ? AlloUrgenceTheme.darkDivider : AlloUrgenceTheme.divider),
             const SizedBox(height: 8),
-            _NurseDrawerItem(icon: Icons.dashboard_rounded, label: 'Dashboard', selected: true,
-              onTap: () => Navigator.pop(context)),
+            // Menu items
+            _NurseDrawerItem(
+              icon: Icons.dashboard_rounded,
+              label: 'Tableau de bord',
+              selected: true,
+              onTap: () => Navigator.pop(context),
+            ),
+            _NurseDrawerItem(
+              icon: Icons.notifications_rounded,
+              label: 'Notifications',
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+              },
+            ),
             _NurseDrawerItem(
               icon: Icons.warning_rounded,
               label: 'Alertes critiques',

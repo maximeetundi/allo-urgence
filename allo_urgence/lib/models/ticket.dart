@@ -18,6 +18,7 @@ class Ticket {
   final String? conditionsMedicales;
   final String? dateNaissance;
   final String createdAt;
+  final String? hospitalName;
 
   Ticket({
     required this.id,
@@ -39,6 +40,7 @@ class Ticket {
     this.conditionsMedicales,
     this.dateNaissance,
     required this.createdAt,
+    this.hospitalName,
   });
 
   factory Ticket.fromJson(Map<String, dynamic> json) {
@@ -62,6 +64,7 @@ class Ticket {
       conditionsMedicales: json['conditions_medicales'],
       dateNaissance: json['date_naissance'],
       createdAt: json['created_at'] ?? '',
+      hospitalName: json['hospital_name'],
     );
   }
 

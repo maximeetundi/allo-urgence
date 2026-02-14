@@ -208,6 +208,10 @@ router.post('/login', authLoginLimiter, validate(loginSchema), async (req, res, 
             return res.status(401).json({ error: 'Identifiants incorrects' });
         }
 
+        if (user.is_suspended) {
+            return res.status(403).json({ error: 'Votre compte a été suspendu. Veuillez contacter l\'administrateur.' });
+        }
+
         // Role restriction based on client
         if (client === 'admin') {
             if (user.role !== 'admin') {

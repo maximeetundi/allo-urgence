@@ -86,6 +86,21 @@ router.post('/', authenticateToken, async (req, res) => {
             }
         }
 
+        // Notify staff via Push Notification
+        const notificationService = require('../services/notification.service');
+        const priorityLabel = estimatedPriority <= 2 ? 'URGENT (P' + estimatedPriority + ')' : 'Nouveau patient';
+        const patientName = `${patient?.prenom} ${patient?.nom}`;
+        notificationService.notifyHospitalStaff(
+            hospital_id,
+            `🚨 ${priorityLabel}: ${patientName}`,
+            `Priorité estimée: P${estimatedPriority}. Motif: ${category_id || 'Triage questionnaire'}`,
+            {
+                type: 'new_ticket',
+                ticketId: updated.id,
+                priority: String(estimatedPriority)
+            }
+        ).catch(e => console.error('Staff notif error:', e));
+
         auditLog('ticket_created', req.user.id, { ticketId: updated.id, priority: estimatedPriority });
         res.status(201).json({ ticket: updated });
     } catch (err) {
@@ -114,7 +129,11 @@ router.get('/patient/active', authenticateToken, async (req, res) => {
 router.get('/patient/history', authenticateToken, async (req, res) => {
     try {
         const result = await db.query(
-            `SELECT * FROM tickets WHERE patient_id = $1 ORDER BY created_at DESC LIMIT 20`,
+            `SELECT t.*, h.name as hospital_name 
+             FROM tickets t 
+             JOIN hospitals h ON t.hospital_id = h.id 
+             WHERE t.patient_id = $1 
+             ORDER BY t.created_at DESC LIMIT 20`,
             [req.user.id],
         );
         res.json({ tickets: result.rows });

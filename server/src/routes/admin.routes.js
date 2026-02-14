@@ -162,6 +162,34 @@ router.patch('/users/:id', authenticateToken, requireRole('admin'), async (req, 
   }
 });
 
+// ── PATCH /api/admin/users/:id/suspend ──────────────────────────
+router.patch('/users/:id/suspend', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const { suspended } = req.body; // true to suspend, false to activate
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ error: 'Impossible de définir votre propre statut de suspension' });
+    }
+
+    const user = await db.findById('users', req.params.id);
+    if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+    const updated = await db.update('users', user.id, { is_suspended: suspended });
+
+    auditLog('user_suspension_change', req.user.id, {
+      targetUserId: user.id,
+      suspended
+    });
+
+    res.json({
+      message: suspended ? 'Utilisateur suspendu' : 'Utilisateur réactivé',
+      user: updated
+    });
+  } catch (err) {
+    console.error('Admin suspend user error:', err.message);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ── DELETE /api/admin/users/:id ─────────────────────────────────
 router.delete('/users/:id', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
